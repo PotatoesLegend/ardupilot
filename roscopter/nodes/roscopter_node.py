@@ -33,6 +33,8 @@ parser.add_option("--rate", dest="rate", default=10, type='int', help="requested
 parser.add_option("--source-system", dest='SOURCE_SYSTEM', type='int',
                   default=255, help='MAVLink source system for this GCS')
 parser.add_option("--enable-control",dest="enable_control", default=False, help="Enable listning to control messages")
+parser.add_option("--enable-vicon", dest="enable_vicon", default=False, help="Enable listening to vicon data")
+parser.add_option("--vicon-name", dest="vicon_name", type='string', help="Name of the rostopic that publishes Vicon data")
 
 (opts, args) = parser.parse_args()
 
@@ -66,6 +68,10 @@ def send_rc(data):
         data.channel[7])
     print "sending rc: %s" % data
 
+def send_vicon(data):
+    # Forwards Vicon data to the board.
+    print(data)
+    #master.mav.vicon_send(data.x, data.y, data.z, data.roll, data.pitch, data.yaw)
 
 def set_arm(req):
     master.arducopter_arm()
@@ -84,17 +90,16 @@ pub_vfr_hud = rospy.Publisher('vfr_hud', roscopter.msg.VFR_HUD, queue_size=queue
 pub_attitude = rospy.Publisher('attitude', roscopter.msg.Attitude, queue_size=queue_size)
 pub_raw_imu =  rospy.Publisher('raw_imu', roscopter.msg.Mavlink_RAW_IMU, queue_size=queue_size)
 if opts.enable_control:
-    rospy.Subscriber("send_rc", roscopter.msg.RC , send_rc)
+    rospy.Subscriber('send_rc', roscopter.msg.RC , send_rc)
+if opts.enable_vicon:
+    rospy.Subscriber(opts.vicon_name, roscopter.msg.MocapPosition, send_vicon)
 
 #define service callbacks
 arm_service = rospy.Service('arm', Empty, set_arm)
 disarm_service = rospy.Service('disarm', Empty, set_disarm)
 
-
 #state
 gps_msg = NavSatFix()
-
-
 
 def mainloop():
     rospy.init_node('roscopter')

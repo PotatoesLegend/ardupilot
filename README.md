@@ -33,21 +33,40 @@ You need to install ROS. The code is tested with ROS Lunar.
 ```
 sudo aptitude install ros-lunar-sensor-msgs python-serial python-tz
 ```
+* Make sure you have run `./waf copter` before you proceed. This command will automatically generate MAVLink code from XML definitions.
 * Run `setup_roscopter.py` from the root folder:
 ```
 python setup_roscopter.py
 ```
 * Connect Pixhawk to your laptop using a USB cable.
 * Now in your catkin workspace folder, run ```roscore```.
-* Open a seperate terminal, navigate to the catkin workspace folder, then run:
+* Open a separate terminal, navigate to the catkin workspace folder, then run:
 ```
-rosrun roscopter roscopter_node.py --device=/dev/ttyACM0 --baudrate=115200
+rosrun roscopter simulate_vicon_topic.py
+```
+This will create a ros node that publishes fake vicon data. It is mostly used for debugging. In the real experiments you will need to replace it with a rostopic that publishes true Vicon data.
+* Next, open a seperate terminal, navigate to the catkin workspace folder, then run:
+```
+rosrun roscopter roscopter_node.py --device=/dev/ttyACM0 --baudrate=115200 --enable-vicon=True --vicon-name=copter
 ```
 * If everything works well, you should see:
 ```
 Waiting for APM heartbeat
 Heartbeat from APM (system 1 component 1)
 Sending all stream request for rate 10
+```
+Next, you should see a lot of `MocapPosition` messages in the form of:
+```
+name: "fake vicon data"
+sample_count: XXX
+translational:
+  x: 4000
+  y: 2000
+  z: 1000
+axisangle:
+  x: 1.0
+  y: 2.0
+  z: 4.0
 ```
 
 ## Troubleshooting

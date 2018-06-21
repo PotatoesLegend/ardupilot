@@ -15,6 +15,7 @@ add_message_files(
   Attitude.msg
   Control.msg
   Mavlink_RAW_IMU.msg
+  MocapPosition.msg
   RC.msg
   State.msg
   VFR_HUD.msg)
@@ -23,6 +24,6 @@ generate_messages(DEPENDENCIES std_msgs sensor_msgs geometry_msgs)
 
 catkin_package()
 
-install(PROGRAMS nodes/roscopter_node.py
+install(PROGRAMS nodes/roscopter_node.py nodes/simulate_vicon_topic.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
