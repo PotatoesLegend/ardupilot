@@ -15,7 +15,7 @@
 	url = git://github.com/google/benchmark.git
 [submodule "modules/mavlink"]
 	path = modules/mavlink
-	url = git://github.com/ArduPilot/mavlink
+	url = https://github.com/dut09/mavlink.git
 	branch = holodeck-demo
 [submodule "gtest"]
 	path = modules/gtest
