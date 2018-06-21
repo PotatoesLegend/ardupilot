@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package>
+  <name>mit_msgs</name>
+  <version>0.1.0</version>
+  <description>Motion capture messages used in Holodeck</description>
+
+  <maintainer email="taodu@csail.mit.edu">Tao Du</maintainer>
+
+  <license>BSD</license>
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend> 
+
+</package>

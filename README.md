@@ -47,7 +47,7 @@ rosrun roscopter simulate_vicon_topic.py
 This will create a ros node that publishes fake vicon data. It is mostly used for debugging. In the real experiments you will need to replace it with a rostopic that publishes true Vicon data.
 * Next, open a seperate terminal, navigate to the catkin workspace folder, then run:
 ```
-rosrun roscopter roscopter_node.py --device=/dev/ttyACM0 --baudrate=115200 --enable-vicon=True --vicon-name=copter
+rosrun roscopter roscopter_node.py --device=/dev/ttyACM0 --baudrate=115200 --enable-vicon=True --vicon-name=/copter
 ```
 * If everything works well, you should see:
 ```
@@ -68,6 +68,26 @@ axisangle:
   y: 2.0
   z: 4.0
 ```
+
+### Send real Vicon data to the board
+This section is most useful for people flying their copters in [Holodeck](http://groups.csail.mit.edu/hq/wiki/bin/view/HQ/Holodeck) at MIT CSAIL.
+* Connect to the WiFi in Holodeck.
+* Make sure Vicon is turned on and our copter is calibrated and selected.
+* Run the command in `command.txt` on the linux machine connected to Vicon.
+* Now if you run `rostopic` on that machine, you should see your copter. 
+* On your local Ubuntu system, add two lines to your `~/.bashrc`:
+```
+function master() { export ROS_MASTER_URI=http://"$1":11311; }
+master <IP address of the linux machine>
+````
+This allows your local machine to fetch data from rostopics on the linux machine.
+* Now if you run `rostopic` on your machine, you should see your copter.
+* Open a new terminal, then type:
+```
+roscd
+rosrun roscopter roscopter_node.py --device=/dev/ttyACM0 --baudrate=115200 --enable-vicon=True --vicon-name=/your_copter_name
+```
+Now you should see a lot of `MocapPosition` messages as before.
 
 ## Troubleshooting
 Make sure you are using the 'default' Python on Ubuntu (`/usr/bin/python` and `/usr/bin/python3`) instead of using Anaconda, miniconda, conda, etc. This will resolve a lot of python-related build errors. You can add the following lines to your `~/.bashrc` file:

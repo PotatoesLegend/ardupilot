@@ -7,7 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs
     sensor_msgs
     geometry_msgs
-    message_generation
+    mit_msgs
 )
 
 add_message_files(
@@ -15,7 +15,6 @@ add_message_files(
   Attitude.msg
   Control.msg
   Mavlink_RAW_IMU.msg
-  MocapPosition.msg
   RC.msg
   State.msg
   VFR_HUD.msg)

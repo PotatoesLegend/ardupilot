@@ -10,6 +10,7 @@ from std_msgs.msg import String, Header
 from std_srvs.srv import *
 from sensor_msgs.msg import NavSatFix
 from sensor_msgs.msg import NavSatStatus
+from mit_msgs.msg import MocapPosition
 
 import roscopter.msg
 
@@ -92,7 +93,7 @@ pub_raw_imu =  rospy.Publisher('raw_imu', roscopter.msg.Mavlink_RAW_IMU, queue_s
 if opts.enable_control:
     rospy.Subscriber('send_rc', roscopter.msg.RC , send_rc)
 if opts.enable_vicon:
-    rospy.Subscriber(opts.vicon_name, roscopter.msg.MocapPosition, send_vicon)
+    rospy.Subscriber(opts.vicon_name, MocapPosition, send_vicon)
 
 #define service callbacks
 arm_service = rospy.Service('arm', Empty, set_arm)

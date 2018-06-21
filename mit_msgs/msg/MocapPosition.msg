@@ -1,0 +1,4 @@
+string name
+float64 sample_count
+geometry_msgs/Vector3 translational
+geometry_msgs/Vector3 axisangle
