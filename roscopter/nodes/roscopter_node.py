@@ -75,12 +75,14 @@ def set_disarm(req):
     master.arducopter_disarm()
     return []
 
-pub_gps = rospy.Publisher('gps', NavSatFix)
-pub_rc = rospy.Publisher('rc', roscopter.msg.RC)
-pub_state = rospy.Publisher('state', roscopter.msg.State)
-pub_vfr_hud = rospy.Publisher('vfr_hud', roscopter.msg.VFR_HUD)
-pub_attitude = rospy.Publisher('attitude', roscopter.msg.Attitude)
-pub_raw_imu =  rospy.Publisher('raw_imu', roscopter.msg.Mavlink_RAW_IMU)
+# ROS recommends using nonzero queue_size.
+queue_size = 10
+pub_gps = rospy.Publisher('gps', NavSatFix, queue_size=queue_size)
+pub_rc = rospy.Publisher('rc', roscopter.msg.RC, queue_size=queue_size)
+pub_state = rospy.Publisher('state', roscopter.msg.State, queue_size=queue_size)
+pub_vfr_hud = rospy.Publisher('vfr_hud', roscopter.msg.VFR_HUD, queue_size=queue_size)
+pub_attitude = rospy.Publisher('attitude', roscopter.msg.Attitude, queue_size=queue_size)
+pub_raw_imu =  rospy.Publisher('raw_imu', roscopter.msg.Mavlink_RAW_IMU, queue_size=queue_size)
 if opts.enable_control:
     rospy.Subscriber("send_rc", roscopter.msg.RC , send_rc)
 

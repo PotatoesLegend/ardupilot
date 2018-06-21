@@ -35,9 +35,20 @@ sudo aptitude install ros-lunar-sensor-msgs python-serial python-tz
 ```
 * Run `setup_roscopter.py` from the root folder:
 ```
-python3 setup_roscopter.py
+python setup_roscopter.py
 ```
-
+* Connect Pixhawk to your laptop using a USB cable.
+* Now in your catkin workspace folder, run ```roscore```.
+* Open a seperate terminal, navigate to the catkin workspace folder, then run:
+```
+rosrun roscopter roscopter_node.py --device=/dev/ttyACM0 --baudrate=115200
+```
+* If everything works well, you should see:
+```
+Waiting for APM heartbeat
+Heartbeat from APM (system 1 component 1)
+Sending all stream request for rate 10
+```
 
 ## Troubleshooting
 Make sure you are using the 'default' Python on Ubuntu (`/usr/bin/python` and `/usr/bin/python3`) instead of using Anaconda, miniconda, conda, etc. This will resolve a lot of python-related build errors. You can add the following lines to your `~/.bashrc` file:
@@ -45,4 +56,4 @@ Make sure you are using the 'default' Python on Ubuntu (`/usr/bin/python` and `/
 alias python=/usr/bin/python
 alias python3=/usr/bin/python3
 ```
-then do `source ~/.bashrc`. Now if you type `python` you should see something like `python 2.7.12 (Default, ...)`. Note that python2 is sufficient for a successful compilation. After setting python you should see no errors when you use the `./waf` commands for compilation.
+then do `source ~/.bashrc`. It's important to make sure `python` points to `python2` not `python3`. Now if you type `python` you should see something like `python 2.7.12 (Default, ...)`. Note that python2 is sufficient for a successful compilation. After setting python you should see no errors when you use the `./waf` commands for compilation.
