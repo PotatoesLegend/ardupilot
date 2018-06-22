@@ -1930,6 +1930,27 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
         break;
 #endif // AC_FENCE == ENABLED
 
+    // Vicon support starts here.
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jun 20, 2018.
+    case MAVLINK_MSG_ID_VICON: {                // MAV ID: 187
+        mavlink_vicon_t packet;
+        mavlink_msg_vicon_decode(msg, &packet);
+
+        // Extract information. We decide to send x, y, and z to GPS and use
+        // yaw to override compass. Roll and pich angles are unused yet.
+        const float x = packet.x;
+        const float y = packet.y;
+        const float z = packet.z;
+        const float roll = packet.roll;
+        const float pitch = packet.pitch;
+        const float yaw = packet.yaw;
+        copter.Log_Write_Vicon(x, y, z, roll, pitch, yaw);
+
+        break;
+    }
+
 #if CAMERA == ENABLED
     //deprecated.  Use MAV_CMD_DO_DIGICAM_CONFIGURE
     case MAVLINK_MSG_ID_DIGICAM_CONFIGURE:      // MAV ID: 202

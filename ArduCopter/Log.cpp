@@ -826,6 +826,37 @@ void Copter::Log_Write_Proximity()
 #endif
 }
 
+// Tao Du
+// taodu@csail.mit.edu
+// Jun 21, 2018
+// Add a new log entry to record Vicon data.
+// proximity sensor logging
+struct PACKED log_Vicon {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    float x;
+    float y;
+    float z;
+    float roll;
+    float pitch;
+    float yaw;
+};
+
+void Copter::Log_Write_Vicon(float x, float y, float z, float roll, float pitch, float yaw)
+{
+    struct log_Vicon pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_VICON_MSG),
+        time_us         : AP_HAL::micros64(),
+        x               : x,
+        y               : y,
+        z               : z,
+        roll            : roll,
+        pitch           : pitch,
+        yaw             : yaw
+    };
+    DataFlash.WriteBlock(&pkt, sizeof(pkt));
+}
+
 // Write beacon position and distances
 void Copter::Log_Write_Beacon()
 {
@@ -880,6 +911,12 @@ const struct LogStructure Copter::log_structure[] = {
       "THRO",  "QBffffbbbb",  "TimeUS,Stage,Vel,VelZ,Acc,AccEfZ,Throw,AttOk,HgtOk,PosOk" },
     { LOG_PROXIMITY_MSG, sizeof(log_Proximity),
       "PRX",   "QBfffffffffff","TimeUS,Health,D0,D45,D90,D135,D180,D225,D270,D315,DUp,CAn,CDis" },
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jun 21, 2018
+    // Add a new entry for logging Vicon.
+    { LOG_VICON_MSG, sizeof(log_Vicon),
+      "VCN",   "Qffffff",      "TimeUS,X,Y,Z,Roll,Pitch,Yaw" },
 };
 
 #if CLI_ENABLED == ENABLED

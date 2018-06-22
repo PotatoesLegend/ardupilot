@@ -71,8 +71,13 @@ def send_rc(data):
 
 def send_vicon(data):
     # Forwards Vicon data to the board.
-    print(data)
-    #master.mav.vicon_send(data.x, data.y, data.z, data.roll, data.pitch, data.yaw)
+    # Unit in data: mm for location, rad for angles.
+    # Unit to send to board: mm for location, rad for angles.
+    pos = data.translational
+    x, y, z = pos.x, pos.y, pos.z
+    rpy = data.axisangle
+    roll, pitch, yaw = rpy.x, rpy.y, rpy.z
+    master.mav.vicon_send(x, y, z, roll, pitch, yaw)
 
 def set_arm(req):
     master.arducopter_arm()
