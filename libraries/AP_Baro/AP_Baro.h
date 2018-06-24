@@ -108,6 +108,12 @@ public:
     // HIL (and SITL) interface, setting altitude
     void setHIL(float altitude_msl);
 
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jun 22, 2018
+    // Use Vicon data to set altitude_msl.
+    void setVicon(float altitude_msl, uint32_t last_update_ms);
+
     // HIL (and SITL) interface, setting pressure, temperature, altitude and climb_rate
     // used by Replay
     void setHIL(uint8_t instance, float pressure, float temperature, float altitude, float climb_rate, uint32_t last_update_ms);
@@ -142,6 +148,9 @@ public:
 
     // enable HIL mode
     void set_hil_mode(void) { _hil_mode = true; }
+
+    // enable Vicon mode
+    void set_vicon_mode(void) { _hil_mode = _vicon_mode = true; }
 
     // set baro drift amount
     void set_baro_drift_altitude(float alt) { _alt_offset = alt; }
@@ -184,6 +193,12 @@ private:
     AP_Float                            _specific_gravity; // the specific gravity of fluid for an ROV 1.00 for freshwater, 1.024 for salt water
     AP_Float                            _user_ground_temperature; // user override of the ground temperature used for EAS2TAS
     bool                                _hil_mode:1;
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jun 22, 2018
+    // Set Vicon mode.
+    bool                                _vicon_mode:1;
+
     float                               _guessed_ground_temperature; // currently ground temperature estimate using our best abailable source
 
     // when did we last notify the GCS of new pressure reference?

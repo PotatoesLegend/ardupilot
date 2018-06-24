@@ -58,6 +58,25 @@ void AP_Baro::setHIL(float altitude_msl)
     _hil.updated = true;
 }
 
+// Tao Du
+// taodu@csail.mit.edu
+// Jun 22, 2018
+/*
+  use Vicon to set altitude in meters. last_update_ms is in milliseconds.
+*/
+void AP_Baro::setVicon(float altitude_msl, uint32_t last_update_ms)
+{
+    setHIL(altitude_msl);
+
+    _hil.altitude = altitude_msl;
+    _hil.have_alt = true;
+
+    if (last_update_ms != 0) {
+        _hil.last_update_ms = last_update_ms;
+        _hil.have_last_update = true;
+    }
+}
+
 /*
   set HIL pressure and temperature for an instance
  */

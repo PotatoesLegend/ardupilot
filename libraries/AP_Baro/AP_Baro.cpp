@@ -156,6 +156,37 @@ void AP_Baro::calibrate(bool save)
         sensors[i].alt_ok = true;
     }
 
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jun 24, 2018
+    // when using Vicon, we assume the initial altitude is zero (see our
+    // roscopter script) so calibration is unnecessary
+    if (_vicon_mode) {
+        // the logic below is modified based on update()
+        uint32_t now = AP_HAL::millis();
+        setVicon(0, now);
+        sensors[0].healthy = true;
+        // update altitude calculation
+        sensors[0].ground_pressure = sensors[0].pressure;
+        sensors[0].alt_ok = true;
+        sensors[0].altitude = 0;
+        sensors[0].last_update_ms = now;
+        // ensure the climb rate filter is updated
+        _climb_rate_filter.update(get_altitude(), get_last_update());
+        // choose primary sensor
+        _primary = 0;
+
+        // the logic below is the remaining part of the old calibrate()
+        // function
+        sensors[0].calibrated = true;
+        if (save) {
+            sensors[0].ground_pressure.set_and_save(sensors[0].pressure);
+        }
+        set_external_temperature(sensors[0].temperature);
+        _guessed_ground_temperature = get_external_temperature();
+        return;
+    }
+
     // let the barometer settle for a full second after startup
     // the MS5611 reads quite a long way off for the first second,
     // leading to about 1m of error if we don't wait
@@ -297,7 +328,12 @@ float AP_Baro::get_air_density_ratio(void)
 // note that this relies on read() being called regularly to get new data
 float AP_Baro::get_climb_rate(void)
 {
-    if (_hil.have_alt) {
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jun 22, 2018
+    // When we use Vicon, we only provide the altitude but not the climb
+    // rate. As a result, we don't want hil to take it over.
+    if (_hil.have_alt && !_vicon_mode) {
         return _hil.climb_rate;
     }
     // we use a 7 point derivative filter on the climb rate. This seems
@@ -385,6 +421,15 @@ void AP_Baro::init(void)
     if (_hil_mode) {
         drivers[0] = new AP_Baro_HIL(*this);
         _num_drivers = 1;
+        // Tao Du
+        // taodu@csail.mit.edu
+        // Jun 24, 2018
+        // initialise the altitude so that the barometer is 'healthy' and
+        // the board can be correctly boot up.
+        if (_vicon_mode) {
+            uint32_t now = AP_HAL::millis();
+            setVicon(0, now);
+        }
         return;
     }
 

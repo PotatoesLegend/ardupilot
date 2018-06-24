@@ -1930,6 +1930,7 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
         break;
 #endif // AC_FENCE == ENABLED
 
+#if VICON_ENABLED == ENABLED
     // Vicon support starts here.
     // Tao Du
     // taodu@csail.mit.edu
@@ -1946,10 +1947,24 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
         const float roll = packet.roll;
         const float pitch = packet.pitch;
         const float yaw = packet.yaw;
+
+        // Logging.
+        uint32_t now = AP_HAL::millis();
         copter.Log_Write_Vicon(x, y, z, roll, pitch, yaw);
+
+        // Use x, y, z to fake GPS.
+
+        // Use z to fake barometer.
+        const float alt_in_meters = -z * 0.001f;
+        copter.barometer.setVicon(alt_in_meters, now);
+
+        // Use yaw to fake compass.
+
+        // TODO: figure out whether we need to do anything for ins, AHRS, etc.
 
         break;
     }
+#endif
 
 #if CAMERA == ENABLED
     //deprecated.  Use MAV_CMD_DO_DIGICAM_CONFIGURE

@@ -69,12 +69,25 @@ def send_rc(data):
         data.channel[7])
     print "sending rc: %s" % data
 
+# estimate the initial altitude and shift the height.
+init_altitude = 0
+init_altitude_count = 0
+max_altitude_count = 100
+
 def send_vicon(data):
     # Forwards Vicon data to the board.
     # Unit in data: mm for location, rad for angles.
     # Unit to send to board: mm for location, rad for angles.
     pos = data.translational
     x, y, z = pos.x, pos.y, pos.z
+    global init_altitude
+    global init_altitude_count
+    if init_altitude_count < max_altitude_count:
+        init_altitude_count += 1
+        init_altitude += z
+        return
+    alt_offset = init_altitude / init_altitude_count 
+    z -= alt_offset
     rpy = data.axisangle
     roll, pitch, yaw = rpy.x, rpy.y, rpy.z
     master.mav.vicon_send(x, y, z, roll, pitch, yaw)

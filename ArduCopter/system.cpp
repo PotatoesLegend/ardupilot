@@ -143,7 +143,15 @@ void Copter::init_ardupilot()
     // Init RSSI
     rssi.init();
     
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jun 22, 2018
+    // Set Vicon mode.
+#if VICON_ENABLED == ENABLED
+    barometer.set_vicon_mode();
+#endif
     barometer.init();
+
 
     // we start by assuming USB connected, as we initialed the serial
     // port with SERIAL0_BAUD. check_usb_mux() fixes this if need be.
