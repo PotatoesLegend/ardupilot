@@ -89,6 +89,15 @@ rosrun roscopter roscopter_node.py --device=/dev/ttyACM0 --baudrate=115200 --ena
 ```
 Now you should see a lot of `MocapPosition` messages as before.
 
+## Motor test
+You will need to use a [dynamometer](https://www.rcbenchmark.com/dynamometer-series-1580/) to collect data from your motor and propeller. We have provided you a javascript script `discrete_measurement.js` and our test data in the `motor_test/` folder for your reference. Copy this script to RCBenchmark software, make sure you understand all the safety requirements, and run the script to collect data. You only need to measure PWM, current, voltage, thrust, and torque. We suggest you start with a 100% battery and run the script several times until the battery becomes 50%.
+
+Once you are done with the measurement, create a new folder in `motor_test` and rename your measurement files as `motor_test_01.csv`, `motor_test_02.csv`, etc. Now in the root folder, run:
+```
+python get_motor_info.py --dir=<your motor folder>
+```
+It will fit the data and print the results on the window.
+
 ## Troubleshooting
 Make sure you are using the 'default' Python on Ubuntu (`/usr/bin/python` and `/usr/bin/python3`) instead of using Anaconda, miniconda, conda, etc. This will resolve a lot of python-related build errors. You can add the following lines to your `~/.bashrc` file:
 ```
