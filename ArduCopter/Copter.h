@@ -747,7 +747,7 @@ private:
     // taodu@csail.mit.edu
     // Jun 21, 2018
     // Add a new function for logging Vicon.
-    void Log_Write_Vicon(float x, float y, float z, float roll, float pitch, float yaw);
+    void Log_Write_Vicon(float x, float y, float z, float roll, float pitch, float yaw, float vx, float vy, float vz, float vroll, float vpitch, float vyaw);
     void Log_Write_Beacon();
     void Log_Write_Vehicle_Startup_Messages();
     void Log_Read(uint16_t log_num, uint16_t start_page, uint16_t end_page);

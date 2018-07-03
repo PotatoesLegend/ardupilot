@@ -1947,10 +1947,16 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
         const float roll = packet.roll;
         const float pitch = packet.pitch;
         const float yaw = packet.yaw;
+        const float vx = packet.vx;
+        const float vy = packet.vy;
+        const float vz = packet.vz;
+        const float roll_speed = packet.vroll;
+        const float pitch_speed = packet.vpitch;
+        const float yaw_speed = packet.vyaw;
 
         // Logging.
         uint32_t now = AP_HAL::millis();
-        copter.Log_Write_Vicon(x, y, z, roll, pitch, yaw);
+        copter.Log_Write_Vicon(x, y, z, roll, pitch, yaw, vx, vy, vz, roll_speed, pitch_speed, yaw_speed);
 
         // Use x, y, z to fake GPS.
 

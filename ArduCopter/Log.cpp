@@ -840,9 +840,15 @@ struct PACKED log_Vicon {
     float roll;
     float pitch;
     float yaw;
+    float vx;
+    float vy;
+    float vz;
+    float vroll;
+    float vpitch;
+    float vyaw;
 };
 
-void Copter::Log_Write_Vicon(float x, float y, float z, float roll, float pitch, float yaw)
+void Copter::Log_Write_Vicon(float x, float y, float z, float roll, float pitch, float yaw, float vx, float vy, float vz, float vroll, float vpitch, float vyaw)
 {
     struct log_Vicon pkt = {
         LOG_PACKET_HEADER_INIT(LOG_VICON_MSG),
@@ -852,7 +858,13 @@ void Copter::Log_Write_Vicon(float x, float y, float z, float roll, float pitch,
         z               : z,
         roll            : roll,
         pitch           : pitch,
-        yaw             : yaw
+        yaw             : yaw,
+        vx              : vx,
+        vy              : vy,
+        vz              : vz,
+        vroll           : vroll,
+        vpitch          : vpitch,
+        vyaw            : vyaw
     };
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
@@ -916,7 +928,7 @@ const struct LogStructure Copter::log_structure[] = {
     // Jun 21, 2018
     // Add a new entry for logging Vicon.
     { LOG_VICON_MSG, sizeof(log_Vicon),
-      "VCN",   "Qffffff",      "TimeUS,X,Y,Z,Roll,Pitch,Yaw" },
+      "VCN",   "Qffffffffffff",      "TimeUS,X,Y,Z,Roll,Pitch,Yaw,VX,VY,VZ,VRoll,VPitch,VYaw" },
 };
 
 #if CLI_ENABLED == ENABLED
