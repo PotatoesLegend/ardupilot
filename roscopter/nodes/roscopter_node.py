@@ -36,6 +36,7 @@ parser.add_option("--source-system", dest='SOURCE_SYSTEM', type='int',
 parser.add_option("--enable-control",dest="enable_control", default=False, help="Enable listning to control messages")
 parser.add_option("--enable-vicon", dest="enable_vicon", default=False, help="Enable listening to vicon data")
 parser.add_option("--vicon-name", dest="vicon_name", type='string', help="Name of the rostopic that publishes Vicon data")
+parser.add_option("--vicon-rate", dest="vicon_rate", type='int', help="Control the frequency of vicon publisher", default=25)
 
 (opts, args) = parser.parse_args()
 
@@ -73,7 +74,9 @@ def send_rc(data):
 init_altitude = 0
 init_altitude_count = 0
 max_altitude_count = 100
-
+# Time stamp in ms.
+init_time_stamp = time.time() * 1000.0
+last_time_offset = 0
 def send_vicon(data):
     # Forwards Vicon data to the board.
     # Unit in data: mm for location, rad for angles.
@@ -90,7 +93,11 @@ def send_vicon(data):
     z -= alt_offset
     rpy = data.axisangle
     roll, pitch, yaw = rpy.x, rpy.y, rpy.z
-    master.mav.vicon_send(x, y, z, roll, pitch, yaw)
+    new_to = time.time() * 1000.0 - init_time_stamp
+    global last_time_offset
+    if new_to - last_time_offset > 1000.0 / opts.vicon_rate:
+        last_time_offset = new_to
+        master.mav.vicon_send(x, y, z, roll, pitch, yaw)
 
 def set_arm(req):
     master.arducopter_arm()
