@@ -1939,35 +1939,34 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
         mavlink_vicon_t packet;
         mavlink_msg_vicon_decode(msg, &packet);
 
-        // Extract information. We decide to send x, y, and z to GPS and use
-        // yaw to override compass. Roll and pich angles are unused yet.
-        const float x = packet.x;
-        const float y = packet.y;
-        const float z = packet.z;
+        // Extract information.
+        // Meaning of each variable in packet.
+        // x, y, z: location in mm in NED frame.
+        // roll, pitch, yaw: euler angles in rad.
+        // vx, vy, vz: velocity in mm/s.
+        // vroll, vpitch, vyaw: angular velocities in rad/s.
+        const float x = packet.x / 1000.0;
+        const float y = packet.y / 1000.0;
+        const float z = packet.z / 1000.0;
         const float roll = packet.roll;
         const float pitch = packet.pitch;
         const float yaw = packet.yaw;
-        const float vx = packet.vx;
-        const float vy = packet.vy;
-        const float vz = packet.vz;
+        const float vx = packet.vx / 1000.0;
+        const float vy = packet.vy / 1000.0;
+        const float vz = packet.vz / 1000.0;
         const float roll_speed = packet.vroll;
         const float pitch_speed = packet.vpitch;
         const float yaw_speed = packet.vyaw;
 
         // Logging.
-        uint32_t now = AP_HAL::millis();
         copter.Log_Write_Vicon(x, y, z, roll, pitch, yaw, vx, vy, vz, roll_speed, pitch_speed, yaw_speed);
 
+        // Storing vicon data.
+        copter.set_vicon_data(x, y, z, roll, pitch, yaw, vx, vy, vz, roll_speed,pitch_speed, yaw_speed);
+        // TODO:
         // Use x, y, z to fake GPS.
-
         // Use z to fake barometer.
-        const float alt_in_meters = -z * 0.001f;
-        copter.barometer.setVicon(alt_in_meters, now);
-
         // Use yaw to fake compass.
-
-        // TODO: figure out whether we need to do anything for ins, AHRS, etc.
-
         break;
     }
 #endif

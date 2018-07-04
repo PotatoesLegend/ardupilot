@@ -601,6 +601,17 @@ private:
     uint32_t visual_odom_last_update_ms;
 #endif
 
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jul 4, 2018
+    // Store Vicon results.
+#if VICON_ENABLED == ENABLED
+    Vector3f vicon_pos;         // In meters.
+    Vector3f vicon_rpy;         // In radians.
+    Vector3f vicon_pos_speed;   // In m/s.
+    Vector3f vicon_rpy_speed;   // In rad/s.
+#endif
+
     // Top-level logic
     // setup the var_info table
     AP_Param param_loader;
@@ -747,7 +758,14 @@ private:
     // taodu@csail.mit.edu
     // Jun 21, 2018
     // Add a new function for logging Vicon.
+#if VICON_ENABLED == ENABLED
     void Log_Write_Vicon(float x, float y, float z, float roll, float pitch, float yaw, float vx, float vy, float vz, float vroll, float vpitch, float vyaw);
+    void set_vicon_data(float x, float y, float z, float roll, float pitch, float yaw, float vx, float vy, float vz, float vroll, float vpitch, float vyaw);
+    void get_vicon_pos(float& x, float& y, float& z);
+    void get_vicon_rpy(float& roll, float& pitch, float& yaw);
+    void get_vicon_pos_speed(float& vx, float& vy, float& vz);
+    void get_vicon_rpy_speed(float& roll_speed, float& pitch_speed, float& yaw_speed);
+#endif
     void Log_Write_Beacon();
     void Log_Write_Vehicle_Startup_Messages();
     void Log_Read(uint16_t log_num, uint16_t start_page, uint16_t end_page);

@@ -148,7 +148,8 @@ void Copter::init_ardupilot()
     // Jun 22, 2018
     // Set Vicon mode.
 #if VICON_ENABLED == ENABLED
-    barometer.set_vicon_mode();
+    // TODO: uncomment this line when we are ready to test barometer.
+    //barometer.set_vicon_mode();
 #endif
     barometer.init();
 

@@ -101,6 +101,15 @@ Copter::Copter(void) :
     // ToDo: Input Manager is only used by Heli for 3.3, but will be used by all frames for 3.4
     input_manager(MAIN_LOOP_RATE),
 #endif
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jul 4, 2018
+#if VICON_ENABLED == ENABLED
+    vicon_pos(0, 0, 0),
+    vicon_rpy(0, 0, 0),
+    vicon_pos_speed(0, 0, 0),
+    vicon_rpy_speed(0, 0, 0),
+#endif
     in_mavlink_delay(false),
     gcs_out_of_time(false),
     param_loader(var_info)

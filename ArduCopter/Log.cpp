@@ -830,22 +830,22 @@ void Copter::Log_Write_Proximity()
 // taodu@csail.mit.edu
 // Jun 21, 2018
 // Add a new log entry to record Vicon data.
-// proximity sensor logging
+#if VICON_ENABLED == ENABLED
 struct PACKED log_Vicon {
     LOG_PACKET_HEADER;
     uint64_t time_us;
-    float x;
-    float y;
-    float z;
-    float roll;
-    float pitch;
-    float yaw;
-    float vx;
-    float vy;
-    float vz;
-    float vroll;
-    float vpitch;
-    float vyaw;
+    float x;            // North in meters.
+    float y;            // East in meters.
+    float z;            // Down in meters.
+    float roll;         // Roll in radians.
+    float pitch;        // Pitch in radians.
+    float yaw;          // Yaw in radians.
+    float vx;           // North velocity in m/s.
+    float vy;           // East velocity in m/s.
+    float vz;           // Down velocity in m/s.
+    float vroll;        // Roll velocity in rad/s.
+    float vpitch;       // Pitch velocity in rad/s.
+    float vyaw;         // Yaw velocity in rad/s.
 };
 
 void Copter::Log_Write_Vicon(float x, float y, float z, float roll, float pitch, float yaw, float vx, float vy, float vz, float vroll, float vpitch, float vyaw)
@@ -868,6 +868,52 @@ void Copter::Log_Write_Vicon(float x, float y, float z, float roll, float pitch,
     };
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
+
+void Copter::set_vicon_data(float x, float y, float z, float roll, float pitch, float yaw, float vx, float vy, float vz, float vroll, float vpitch, float vyaw)
+{
+    vicon_pos[0] = x;
+    vicon_pos[1] = y;
+    vicon_pos[2] = z;
+    vicon_rpy[0] = roll;
+    vicon_rpy[1] = pitch;
+    vicon_rpy[2] = yaw;
+    vicon_pos_speed[0] = vx;
+    vicon_pos_speed[1] = vy;
+    vicon_pos_speed[2] = vz;
+    vicon_rpy_speed[0] = vroll;
+    vicon_rpy_speed[1] = vpitch;
+    vicon_rpy_speed[2] = vroll;
+}
+
+void Copter::get_vicon_pos(float& x, float& y, float& z)
+{
+    x = vicon_pos[0];
+    y = vicon_pos[1];
+    z = vicon_pos[2];
+}
+
+void Copter::get_vicon_rpy(float& roll, float& pitch, float& yaw)
+{
+    roll = vicon_rpy[0];
+    pitch = vicon_rpy[1];
+    yaw = vicon_rpy[2];
+}
+
+void Copter::get_vicon_pos_speed(float& vx, float& vy, float& vz)
+{
+    vx = vicon_pos_speed[0];
+    vy = vicon_pos_speed[1];
+    vz = vicon_pos_speed[2];
+}
+
+void Copter::get_vicon_rpy_speed(float& roll_speed, float& pitch_speed, float& yaw_speed)
+{
+    roll_speed = vicon_rpy_speed[0];
+    pitch_speed = vicon_rpy_speed[1];
+    yaw_speed = vicon_rpy_speed[2];
+}
+
+#endif
 
 // Write beacon position and distances
 void Copter::Log_Write_Beacon()
