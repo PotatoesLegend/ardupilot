@@ -13,7 +13,8 @@ from sensor_msgs.msg import NavSatStatus
 from mit_msgs.msg import MocapPosition
 
 import roscopter.msg
-
+from derivative_filter import *
+from transformations import *
 
 mavlink_dir = os.path.realpath(os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
@@ -70,34 +71,92 @@ def send_rc(data):
         data.channel[7])
     print "sending rc: %s" % data
 
-# estimate the initial altitude and shift the height.
-init_altitude = 0
-init_altitude_count = 0
-max_altitude_count = 100
-# Time stamp in ms.
-init_time_stamp = time.time() * 1000.0
+# Time stamp in seconds.
+init_time_stamp = time.time()
 last_time_offset = 0
+vx = PolynomialFilter(2)
+vy = PolynomialFilter(2)
+vz = PolynomialFilter(2)
+vroll = PolynomialFilter(2)
+vpitch = PolynomialFilter(2)
+vyaw = PolynomialFilter(2)
+last_yaw = np.nan
 def send_vicon(data):
     # Forwards Vicon data to the board.
     # Unit in data: mm for location, rad for angles.
     # Unit to send to board: mm for location, rad for angles.
     pos = data.translational
     x, y, z = pos.x, pos.y, pos.z
-    global init_altitude
-    global init_altitude_count
-    if init_altitude_count < max_altitude_count:
-        init_altitude_count += 1
-        init_altitude += z
-        return
-    alt_offset = init_altitude / init_altitude_count 
-    z -= alt_offset
+    # Unfortunately the inertia frame in the simulator is not the same as in
+    # VICON, so we have to convert x, y, z manually. Specifically, in VICON
+    # we set x to right, y to front, and z to up. In our simulator, however,
+    # x is front, y is right, and z is down.
+    x, y, z = y, x, -z
+
+    # Get the rotational angle.
     rpy = data.axisangle
-    roll, pitch, yaw = rpy.x, rpy.y, rpy.z
-    new_to = time.time() * 1000.0 - init_time_stamp
+    ax, ay, az = rpy.x, rpy.y, rpy.z
+    theta = math.sqrt(ax * ax + ay * ay + az * az)
+    # Get the rotational axis. If theta is close to zero, set the axis to
+    # [0, 0, 1] and theta to 0.
+    if math.fabs(theta) < 1e-5:
+        theta = 0.0
+        ax = 0.0
+        ay = 0.0
+        az = 1.0
+    else:
+        ax = ax / theta
+        ay = ay / theta
+        az = az / theta
+    # Note that (ax, ay, az) is defined in the WORLD frame, and if we rotate
+    # the WORLD frame along (ax, ay, az) by theta, we will get our BODY frame.
+    # Now here is a discrepancy: we would like to switch our WORLD frame to
+    # North(x)-East(y)-Down(z) frame so that it is aligned with our BODY frame.
+    R = rotation_matrix(theta, [ax, ay, az])
+    # Now each column in R represents the corresponding axis of the BODY frame
+    # in the WORLD frame.
+    R2 = numpy.dot(numpy.array([[0.0, 1.0, 0.0, 0.0],
+                               [1.0, 0.0, 0.0, 0.0],
+                               [0.0, 0.0, -1.0, 0.0],
+                               [0.0, 0.0, 0.0, 1.0]]), R)
+    # Now R represents the transformations between the BODY frame and the faked
+    # North-East-Down frame. Specifically, R * [1 0 0 0]' returns the x axis of
+    # the BODY frame in the NED frame. Now if we solve the Euler angles from R
+    # we should be able to get the faked yaw angle. All angles are in radians.
+    roll, pitch, yaw = euler_from_matrix(R2, 'sxyz')
+    # Uncomment the following lines to double check euler angles.
+    #Rroll = rotation_matrix(roll, [1.0, 0.0, 0.0])
+    #Rpitch = rotation_matrix(pitch, [0.0, 1.0, 0.0])
+    #Ryaw = rotation_matrix(yaw, [0.0, 0.0, 1.0])
+    #if not numpy.allclose(R2, numpy.dot(numpy.dot(Ryaw, Rpitch), Rroll)):
+    #    print('Euler angles are wrong!')
+
+    new_to = time.time() - init_time_stamp
     global last_time_offset
-    if new_to - last_time_offset > 1000.0 / opts.vicon_rate:
+    if new_to - last_time_offset > 1.0 / opts.vicon_rate:
+        # Check if we need to round yaw.
+        if not np.isnan(last_yaw):
+            y = yaw - last_yaw
+            # Find among all y + 2kpi the closest one to 0.
+            y /= 2.0 * np.pi
+            # Now find among all y + k the closest one to 0.
+            yl = np.floor(y)
+            yc = np.ceil(y)
+            ks = np.array([-yl, -yc, -yl - 1, -yc + 1])
+            ys = yaw + ks * 2.0 * np.pi
+            yaw = ys[np.argmin(np.abs(ys - last_yaw))]
+        last_yaw = yaw
+        # Compute linear and angular velocities.
+        # Velocities are in mm/s and rad/s
+        vx.update(new_to, x)
+        vy.update(new_to, y)
+        vz.update(new_to, z)
+        vroll.update(new_to, roll) 
+        vpitch.update(new_to, pitch) 
+        vyaw.update(new_to, yaw) 
         last_time_offset = new_to
-        master.mav.vicon_send(x, y, z, roll, pitch, yaw)
+        master.mav.vicon_send(x, y, z, roll, pitch, yaw, \
+            vx.slope(), vy.slope(), vz.slope(), vroll.slope(), vpitch.slope(), vyaw.slope())
 
 def set_arm(req):
     master.arducopter_arm()
