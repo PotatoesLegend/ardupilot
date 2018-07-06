@@ -9,10 +9,10 @@ class TerminalColors:
   UNDERLINE = '\033[4m'
 
 def print_error(message):
-  print(TerminalColors.FAIL + message + TerminalColors.ENDC)
+  print(TerminalColors.FAIL + '[ERROR]: ' + message + TerminalColors.ENDC)
 
 def print_warning(message):
-  print(TerminalColors.WARNING + message + TerminalColors.ENDC)
+  print(TerminalColors.WARNING + '[WARNING]: ' + message + TerminalColors.ENDC)
 
 def print_success(message):
   print(TerminalColors.OKGREEN + message + TerminalColors.ENDC)

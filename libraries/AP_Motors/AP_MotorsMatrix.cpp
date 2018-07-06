@@ -19,7 +19,38 @@
  *
  */
 #include <AP_HAL/AP_HAL.h>
+#include <AP_Math/vectorN.h>
 #include "AP_MotorsMatrix.h"
+// Tao Du
+// taodu@csail.mit.edu
+// Jul 5, 2018
+#include "../../ArduCopter/Copter.h"
+// Beginning of LQR.
+// Tao Du
+// taodu@csail.mit.edu
+static const float u_eq[5] = { 3.035096f, 4.194400f, 3.035096f, 2.318607f, 4.194400f };
+
+static int16_t thrust_to_pwm(const float thrust_in_newton, const float voltage)
+{
+    const float u0 = 14.768811f, us = 0.572843f, p0 = 1150.000000f, ps = 0.001333f, t0 = 0.050654f, ts = 0.081572f;
+    const float u = (voltage - u0) * us;
+    const float t = (thrust_in_newton - t0) * ts;
+    // Now t = [u^2, up, p^2, u, p, 1].dot(func_param)
+    const float s_u2 = 0.066712f, s_up = 0.228158f, s_p2 = 0.486307f, s_u = -0.076330f, s_p = 0.395554f, s1 = 0.009862f;
+    // Reorganize them into the form of ap^2 + bp + c = 0.
+    const float a = s_p2, b = s_p + s_up * u, c = s_u2 * u * u + s_u * u + s1 - t;
+    const float delta = b * b - 4 * a * c;
+    const int16_t pwm_min = 1000;
+    const int16_t pwm_max = 2000;
+    if (delta < 0) return pwm_min;
+    const float p = (-b + sqrtf(delta)) / (2.0 * a);
+    int16_t pwm = static_cast<int16_t>(p / ps + p0);
+    // clamp PWM.
+    pwm = (pwm > pwm_min) ? pwm : pwm_min;
+    pwm = (pwm < pwm_max) ? pwm : pwm_max;
+    return pwm;
+}
+// End of LQR.
 
 extern const AP_HAL::HAL& hal;
 
@@ -90,39 +121,87 @@ void AP_MotorsMatrix::output_to_motors()
     int8_t i;
     int16_t motor_out[AP_MOTORS_MAX_NUM_MOTORS];    // final pwm values sent to the motor
 
-    switch (_spool_mode) {
-        case SHUT_DOWN: {
-            // sends minimum values out to the motors
-            // set motor output based on thrust requests
-            for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
-                if (motor_enabled[i]) {
-                    if (_disarm_disable_pwm && _disarm_safety_timer == 0 && !armed()) {
-                        motor_out[i] = 0;
-                    } else {
-                        motor_out[i] = get_pwm_output_min();
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jul 5, 2018
+    if (_vicon_mode) {
+        switch (_spool_mode) {
+            case SHUT_DOWN: {
+                // sends minimum values out to the motors
+                // set motor output based on thrust requests
+                for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
+                    if (motor_enabled[i]) {
+                        if (_disarm_disable_pwm && _disarm_safety_timer == 0 && !armed()) {
+                            motor_out[i] = 0;
+                        } else {
+                            motor_out[i] = get_pwm_output_min();
+                        }
                     }
                 }
+                break;
             }
-            break;
+            case SPIN_WHEN_ARMED:
+            case SPOOL_UP:
+            case THROTTLE_UNLIMITED:
+            case SPOOL_DOWN:
+                // TODO: compute motor_out[i].
+                // Get states.
+                VectorN<float, 12> x;
+                _copter.get_vicon_pos(x[0], x[1], x[2]);
+                _copter.get_vicon_rpy(x[3], x[4], x[5]);
+                _copter.get_vicon_pos_speed(x[6], x[7], x[8]);
+                _copter.get_vicon_rpy_speed(x[9], x[10], x[11]);
+
+                // Right now let's hard code the target.
+                // Note that in the NED frame, negative z means positive altitude.
+                Vector3f target(0.0, 0.0, -0.75);
+                VectorN<float, 12> x0;
+                x0.zero();
+                for (i=0; i<3; ++i) x0[i] = target[i];
+
+                const VectorN<float, 5> u0(u_eq);
+                // TODO: compute K?
+                // TODO: get voltage?
+                for (i=0; i<5; ++i) {
+                    motor_out[i] = thrust_to_pwm(u0[i], 15.0);
+                }
+                break;
         }
-        case SPIN_WHEN_ARMED:
-            // sends output to motors when armed but not flying
-            for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
-                if (motor_enabled[i]) {
-                    motor_out[i] = calc_spin_up_to_pwm();
+    } else {
+        switch (_spool_mode) {
+            case SHUT_DOWN: {
+                // sends minimum values out to the motors
+                // set motor output based on thrust requests
+                for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
+                    if (motor_enabled[i]) {
+                        if (_disarm_disable_pwm && _disarm_safety_timer == 0 && !armed()) {
+                            motor_out[i] = 0;
+                        } else {
+                            motor_out[i] = get_pwm_output_min();
+                        }
+                    }
                 }
+                break;
             }
-            break;
-        case SPOOL_UP:
-        case THROTTLE_UNLIMITED:
-        case SPOOL_DOWN:
-            // set motor output based on thrust requests
-            for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
-                if (motor_enabled[i]) {
-                    motor_out[i] = calc_thrust_to_pwm(_thrust_rpyt_out[i]);
+            case SPIN_WHEN_ARMED:
+                // sends output to motors when armed but not flying
+                for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
+                    if (motor_enabled[i]) {
+                        motor_out[i] = calc_spin_up_to_pwm();
+                    }
                 }
-            }
-            break;
+                break;
+            case SPOOL_UP:
+            case THROTTLE_UNLIMITED:
+            case SPOOL_DOWN:
+                // set motor output based on thrust requests
+                for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
+                    if (motor_enabled[i]) {
+                        motor_out[i] = calc_thrust_to_pwm(_thrust_rpyt_out[i]);
+                    }
+                }
+                break;
+        }
     }
 
     // send output to each motor
@@ -151,6 +230,12 @@ uint16_t AP_MotorsMatrix::get_motor_mask()
 // includes new scaling stability patch
 void AP_MotorsMatrix::output_armed_stabilizing()
 {
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jul 5, 2018
+    // Do not plan to use this function when Vicon is enabled.
+    if (_vicon_mode) return;
+
     uint8_t i;                          // general purpose counter
     float   roll_thrust;                // roll thrust input value, +/- 1.0
     float   pitch_thrust;               // pitch thrust input value, +/- 1.0
@@ -477,6 +562,36 @@ void AP_MotorsMatrix::setup_motors(motor_frame_class frame_class, motor_frame_ty
                     break;
             }
             break;
+
+        // Tao Du
+        // taodu@csail.mit.edu
+        // Jul 5, 2018
+        case MOTOR_FRAME_PENTA: {
+            // for now we ignore the frame type.
+            // rcout 1: right midfielder (CW)
+            // rcout 2: right back. (CCW)
+            // rcout 3: center forward. (CW)
+            // rcout 4: left back. (CW)
+            // rcout 5: left midfielder. (CCW)
+            // if you are a soccer fan you will immediate understand this:
+            /*               CF (rotor 3)
+                              |
+                              |
+                              |
+                 LMF <-----Pixhawk-----> RMF (rotor 1)
+                             / \
+                            /   \
+                           /     \
+               (rotor 4) LB       RB (rotor 2)
+            */
+            add_motor(AP_MOTORS_MOT_1,          72, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 1);
+            add_motor(AP_MOTORS_MOT_2,          144,    AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 2);
+            add_motor(AP_MOTORS_MOT_3,          0,  AP_MOTORS_MATRIX_YAW_FACTOR_CW, 3);
+            add_motor(AP_MOTORS_MOT_4,          -144,   AP_MOTORS_MATRIX_YAW_FACTOR_CW, 4);
+            add_motor(AP_MOTORS_MOT_5,          -72,    AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 5);
+            success = true;
+            break;
+        }
 
         case MOTOR_FRAME_OCTA:
             switch (frame_type) {

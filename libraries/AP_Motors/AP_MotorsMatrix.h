@@ -10,13 +10,18 @@
 #define AP_MOTORS_MATRIX_YAW_FACTOR_CW   -1
 #define AP_MOTORS_MATRIX_YAW_FACTOR_CCW   1
 
+// Tao Du
+// taodu@csail.mit.edu
+// Jul 5, 2018
+class Copter;
+
 /// @class      AP_MotorsMatrix
 class AP_MotorsMatrix : public AP_MotorsMulticopter {
 public:
 
     /// Constructor
-    AP_MotorsMatrix(uint16_t loop_rate, uint16_t speed_hz = AP_MOTORS_SPEED_DEFAULT) :
-        AP_MotorsMulticopter(loop_rate, speed_hz)
+    AP_MotorsMatrix(const Copter& copter, const bool vicon_mode, uint16_t loop_rate, uint16_t speed_hz = AP_MOTORS_SPEED_DEFAULT) :
+        _copter(copter), _vicon_mode(vicon_mode), AP_MotorsMulticopter(loop_rate, speed_hz)
     {};
 
     // init
@@ -76,4 +81,11 @@ protected:
     uint8_t             _test_order[AP_MOTORS_MAX_NUM_MOTORS];  // order of the motors in the test sequence
     motor_frame_class   _last_frame_class; // most recently requested frame class (i.e. quad, hexa, octa, etc)
     motor_frame_type    _last_frame_type; // most recently requested frame type (i.e. plus, x, v, etc)
+
+// Tao Du
+// taodu@csail.mit.edu
+// Jul 5, 2018
+private:
+    const Copter&       _copter;
+    const bool          _vicon_mode;
 };

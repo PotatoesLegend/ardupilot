@@ -8,12 +8,17 @@
 #include <RC_Channel/RC_Channel.h>     // RC Channel Library
 #include "AP_MotorsMatrix.h"
 
+// Tao Du
+// taodu@csail.mit.edu
+// Jul 5, 2018
+class Copter;
+
 /// @class      AP_MotorsMatrix
 class AP_Motors6DOF : public AP_MotorsMatrix {
 public:
 
-    AP_Motors6DOF(uint16_t loop_rate, uint16_t speed_hz = AP_MOTORS_SPEED_DEFAULT) :
-        AP_MotorsMatrix(loop_rate, speed_hz) {
+    AP_Motors6DOF(const Copter& copter, uint16_t loop_rate, uint16_t speed_hz = AP_MOTORS_SPEED_DEFAULT) :
+        AP_MotorsMatrix(copter, false, loop_rate, speed_hz) {
         AP_Param::setup_object_defaults(this, var_info);
     };
 

@@ -885,28 +885,28 @@ void Copter::set_vicon_data(float x, float y, float z, float roll, float pitch, 
     vicon_rpy_speed[2] = vroll;
 }
 
-void Copter::get_vicon_pos(float& x, float& y, float& z)
+void Copter::get_vicon_pos(float& x, float& y, float& z) const
 {
     x = vicon_pos[0];
     y = vicon_pos[1];
     z = vicon_pos[2];
 }
 
-void Copter::get_vicon_rpy(float& roll, float& pitch, float& yaw)
+void Copter::get_vicon_rpy(float& roll, float& pitch, float& yaw) const
 {
     roll = vicon_rpy[0];
     pitch = vicon_rpy[1];
     yaw = vicon_rpy[2];
 }
 
-void Copter::get_vicon_pos_speed(float& vx, float& vy, float& vz)
+void Copter::get_vicon_pos_speed(float& vx, float& vy, float& vz) const
 {
     vx = vicon_pos_speed[0];
     vy = vicon_pos_speed[1];
     vz = vicon_pos_speed[2];
 }
 
-void Copter::get_vicon_rpy_speed(float& roll_speed, float& pitch_speed, float& yaw_speed)
+void Copter::get_vicon_rpy_speed(float& roll_speed, float& pitch_speed, float& yaw_speed) const
 {
     roll_speed = vicon_rpy_speed[0];
     pitch_speed = vicon_rpy_speed[1];
