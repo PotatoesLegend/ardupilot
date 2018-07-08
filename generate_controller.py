@@ -5,7 +5,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import utility
+import copter_dynamics
+import control
 
+################################################################################
+# Helper functions.
+################################################################################
 def read_csv(file_name):
     # We assume header is the first line.
     header = []
@@ -100,35 +105,94 @@ def fit_thrust(voltage, pwm, thrust):
         return thrust
     return thrust_estimate, x, n
 
-def compute_force_equilibrium(mass_in_kg, motor_matrix):
-    motor_num = motor_matrix.shape[1]
-    g = 9.8
-    # motor_matrix * u_eq = [0, 0, -mass_in_kg * g, 0, 0, 0]
-    target = np.array([0, 0, -mass_in_kg * g, 0, 0, 0])
-    u_eq, _, _, _ = np.linalg.lstsq(motor_matrix, target)
-    u_eq = u_eq.flatten()
-    if not np.allclose(np.dot(motor_matrix, u_eq), target):
-        utility.print_error('Cannot find force equilibrium point')
+def acquire_frame_type(args):
+    frame_type_str = args.frame
+    if frame_type_str == 'QUAD_X':
+        frame_type = copter_dynamics.CopterFrameType.QUAD_X
+    elif frame_type_str == 'QUAD_PLUS':
+        frame_type = copter_dynamics.CopterFrameType.QUAD_PLUS
+    elif frame_type_str == 'PENTA':
+        frame_type = copter_dynamics.CopterFrameType.PENTA
     else:
-        utility.print_success('Found force equilibrium. diff = %f' % np.linalg.norm(np.dot(motor_matrix, u_eq) - target))
-    return u_eq
+        utility.print_error('Unsupported frame type.')
+        sys.exit(-1)
+    return frame_type
+
+def acquire_mass(args):
+    mass = args.mass
+    if mass > 500 and mass < 3000:
+        print('Mass = %f g' % mass)
+    else:
+        utility.print_warning('Your copter seems too light or too heavy.')
+    mass /= 1000.0
+    return mass
+
+def acquire_arm_length(args):
+    # Acquire arm length.
+    arm_length = args.arm_length
+    if arm_length > 50 and arm_length < 400:
+        print('Arm length = %f mm' % arm_length)
+    else:
+        utility.print_warning('Your arm length (%f mm) seems too short or too long.' % arm_length)
+    arm_length /= 1000.0
+    return arm_length
+
+def acquire_moment_of_inertia(args):
+    rotor_weight = args.rotor_weight
+    if rotor_weight > 30 and rotor_weight < 200:
+        print('Rotor weight = %f g' % rotor_weight)
+    else:
+        utility.print_warning('Your rotor (%f g) seems too light or too heavy.' % rotor_weight)
+    rotor_weight /= 1000.0
+    Ixx = args.ixx
+    Iyy = args.iyy
+    Izz = args.izz
+    if Ixx != 0 and Iyy != 0 and Izz != 0:
+        moi = np.diag(np.array([Ixx, Iyy, Izz]))
+    else:
+        print('Estimate the moment of inertia using rotors and arm length.')
+        frame_type = acquire_frame_type(args)
+        moi = copter_dynamics.compute_moment_of_inertia(frame_type, rotor_weight, arm_length)
+    print('Moment of inertia = \n' + str(moi))
+    return moi
+
+def acquire_q_matrix(args):
+    q_str = args.q
+    q = [float(v) for v in q_str.strip().split()]
+    if len(q) != 12:
+        utility.print_error('Expect to see 12 elements.')
+        sys.exit(-1)
+    Q = np.diag(q)
+    return Q
 
 ################################################################################
 # Beginning of the script.
 ################################################################################
-# Usage: python get_motor_info.py --dir=<your motor data folder>
 parser = argparse.ArgumentParser()
-parser.add_argument('--dir', help='directory of motor measurement csv files.', type=str, default='motor_test/t_motor_air2216')
+parser.add_argument('--dir', help='directory of motor measurement csv files', type=str, default='motor_test/t_motor_air2216')
+parser.add_argument('--frame', help='frame type', type=str, default='PENTA')
+parser.add_argument('--mass', help='copter mass in grams', type=float, default=1712.0)
+parser.add_argument('--arm-length', help='distance from rotor to center in millimeters', type=float, default=230.0)
+parser.add_argument('--rotor-weight', help='rotor mass in grams', type=float, default=95.0)
+parser.add_argument('--ixx', help='x component of the moment of inertia (type 0 if you do not have them)', type=float, default=0.0)
+parser.add_argument('--iyy', help='y component of the moment of inertia (type 0 if you do not have them)', type=float, default=0.0)
+parser.add_argument('--izz', help='z component of the moment of inertia (type 0 if you do not have them)', type=float, default=0.0)
+parser.add_argument('--q', help='diagonal elements in Q matrix for LQR (assume R = 1).', type=str, default='1 1 1 1 1 1 1 1 1 1 1 1')
 args = parser.parse_args()
 motor_dir = args.dir
+frame_type = acquire_frame_type(args)
+mass = acquire_mass(args)
+arm_length = acquire_arm_length(args)
+moi = acquire_moment_of_inertia(args)
+Q = acquire_q_matrix(args)
 
 # Read csv files.
 csv_idx = 1
 pwm = []            # 1000-2000
-thrust = []     # Usually 0-2kg
-torque = []     # Usually 0-0.2Nm
-current = []    # Usually 0-20A
-voltage = []    # Usually 0-18V
+thrust = []         # Usually 0-2kg
+torque = []         # Usually 0-0.2Nm
+current = []        # Usually 0-20A
+voltage = []        # Usually 0-18V
 
 while True:
     csv_file_name = os.path.join(motor_dir, 'motor_test_%02d.csv' % csv_idx)
@@ -261,62 +325,20 @@ print('Let u = (voltage - u0) * us, p = (pwm - p0) * ps')
 print('Let a = [u^2, up, p^2, u, p, 1]')
 print('The estimated thrust in Newton is a.dot(func_param) / ts + t0')
 
-# Interactive script to compute u0 and K, and update AP_MotorsMatrix.cpp according.
+# Code generation.
 print('****************************** CODE GENERATION *************************************')
-# Acquire mass.
-mass_str = raw_input('Type the mass of your copter in grams: ')
-mass = float(mass_str)
-if mass > 500 and mass < 3000:
-    print('Mass = %f g' % mass)
-else:
-    utility.print_warning('Your copter seems too light or too heavy.')
-
-# Acquire arm length.
-arm_length_str = raw_input('Type the arm length of your copter in millimeters: ')
-arm_length = float(arm_length_str)
-if arm_length > 50 and arm_length < 400:
-    print('Arm length = %f mm' % arm_length)
-else:
-    utility.print_warning('Your arm length (%f mm) seems too short or too long.' % arm_length)
-
-# Estimate moment of inertia.
-moi_str = raw_input('Type the moment of inertia (three numbers in kgm^2, separated by space, type 0 0 0 if you do not have them): ')
-ixx, iyy, izz = [float(v) for v in moi_str.strip().split()]
-if ixx == 0 or iyy == 0 or izz == 0:
-    print('No valid user inputs. Estimate the moment of inertia using rotors and arm length.')
-    # Acquire rotor weight.
-    rotor_weight_str = raw_input('Type the weight of a single motor and propeller in grams: ')
-    rotor_weight = float(rotor_weight_str)
-    if rotor_weight > 30 and rotor_weight < 200:
-        print('Rotor weight = %f g' % rotor_weight)
-    else:
-        utility.print_warning('Your motor and propeller seems too light or too heavy.')
-    # TODO: refactor code for more general frame types.
-    angle = 2.0 * np.pi / 5
-    ixx = (rotor_weight / 1000.0) * np.power(arm_length / 1000.0, 2) * (2 * (np.sin(angle) ** 2) + 2 * (np.sin(angle * 2) ** 2))
-    iyy = (rotor_weight / 1000.0) * np.power(arm_length / 1000.0, 2) * (1 + 2 * (np.cos(angle) ** 2) + 2 * (np.cos(angle * 2) ** 2))
-    izz = (rotor_weight / 1000.0) * np.power(arm_length / 1000.0, 2)
-utility.print_success('Ixx = %f, Iyy = %f, Izz = %f' % (ixx, iyy, izz))
-
-# Generate motor matrix: it is a 6 by N matrix such that taking the product of it and thrusts gives the net thrust and torque.
-# TODO: refactor code to support general frame types.
-motor_matrix = np.zeros((6, 5))
-motor_matrix[2, :] = -1.0
-angle = 2.0 * np.pi / 5.0
-for i, a in enumerate([angle, angle * 2.0, 0.0, -angle * 2.0, -angle]):
-    motor_matrix[3, i] = -arm_length / 1000.0 * np.sin(a)
-    motor_matrix[4, i] = arm_length / 1000.0 * np.cos(a)
-cw, ccw = -1, 1
-for i, yaw_factor in enumerate([cw, ccw, cw, cw, ccw]):
-    motor_matrix[5, i] = yaw_factor * torque_to_thrust_ratio
+# Generate motor matrix.
+motor_matrix = copter_dynamics.compute_motor_matrix(frame_type, torque_to_thrust_ratio, arm_length)
 # Compute the force equilibrium.
-u_eq = compute_force_equilibrium(mass / 1000.0, motor_matrix)
+u_eq = copter_dynamics.compute_force_equilibrium(mass, motor_matrix)
+# Linearize the model around x_eq and u_eq.
+x_eq = np.zeros(12)
+A, B = copter_dynamics.linearize_copter(mass, moi, motor_matrix, x_eq, u_eq) 
+# LQR.
+R = np.diag(np.ones(motor_matrix.shape[1]))
+K = control.lqr(A, B, Q, R)
 
-# TODO: solve A and B.
-
-# TODO: solve K.
-
-# TODO: update AP_MotorsMatrix.cpp.
+# Update AP_MotorsMatrix.cpp.
 utility.print_success('Generating code...')
 cpp_file = os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), 'libraries/AP_Motors/AP_MotorsMatrix.cpp')
 cpp_lines = []
@@ -333,11 +355,16 @@ if start_idx == -1 or end_idx == -1:
     start_idx = include_idx + 1
     end_idx = include_idx
 new_cpp_lines = cpp_lines[:start_idx]
-new_cpp_lines.append('// Beginning of LQR.\n')
+new_cpp_lines.append('// Beginning of LQR. This part is auto generated. DO NOT MANUALLY MODIFY IT.\n')
 new_cpp_lines.append('// Tao Du\n')
 new_cpp_lines.append('// taodu@csail.mit.edu\n')
 new_cpp_lines.append('static const float u_eq[%d] = { %s };\n' % (len(u_eq), ', '.join(['%ff' % u for u in u_eq])))
-new_cpp_lines.append('\n')
+new_cpp_lines.append('static const float x_eq[%d] = { %s };\n' % (len(x_eq), ', '.join(['%ff' % x for x in x_eq])))
+new_cpp_lines.append('static const int kMotorNum = %d;\n' % K.shape[0])
+new_cpp_lines.append('static const float K[kMotorNum][%d] = {\n' % K.shape[1])
+for i in range(K.shape[0]):
+    new_cpp_lines.append('    { %s },\n' % (', '.join(['%ff' % v for v in K[i, :]])))
+new_cpp_lines.append('};\n\n')
 # Thrust to pwm function.
 new_cpp_lines.append('static int16_t thrust_to_pwm(const float thrust_in_newton, const float voltage)\n')
 new_cpp_lines.append('{\n')
@@ -361,7 +388,7 @@ new_cpp_lines.append('    pwm = (pwm > pwm_min) ? pwm : pwm_min;\n')
 new_cpp_lines.append('    pwm = (pwm < pwm_max) ? pwm : pwm_max;\n')
 new_cpp_lines.append('    return pwm;\n')
 new_cpp_lines.append('}\n')
-new_cpp_lines.append('// End of LQR.\n')
+new_cpp_lines.append('// End of LQR. This part is auto generated. DO NOT MANUALLY MODIFY IT.\n')
 new_cpp_lines += cpp_lines[end_idx + 1:]
 f = open(cpp_file, 'w')
 for line in new_cpp_lines:

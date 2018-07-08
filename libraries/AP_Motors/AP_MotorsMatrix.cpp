@@ -25,10 +25,19 @@
 // taodu@csail.mit.edu
 // Jul 5, 2018
 #include "../../ArduCopter/Copter.h"
-// Beginning of LQR.
+// Beginning of LQR. This part is auto generated. DO NOT MANUALLY MODIFY IT.
 // Tao Du
 // taodu@csail.mit.edu
 static const float u_eq[5] = { 3.035096f, 4.194400f, 3.035096f, 2.318607f, 4.194400f };
+static const float x_eq[12] = { 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f };
+static const int kMotorNum = 5;
+static const float K[kMotorNum][12] = {
+    { 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f },
+    { 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f },
+    { 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f },
+    { 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f },
+    { 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f },
+};
 
 static int16_t thrust_to_pwm(const float thrust_in_newton, const float voltage)
 {
@@ -50,7 +59,7 @@ static int16_t thrust_to_pwm(const float thrust_in_newton, const float voltage)
     pwm = (pwm < pwm_max) ? pwm : pwm_max;
     return pwm;
 }
-// End of LQR.
+// End of LQR. This part is auto generated. DO NOT MANUALLY MODIFY IT.
 
 extern const AP_HAL::HAL& hal;
 
@@ -144,7 +153,6 @@ void AP_MotorsMatrix::output_to_motors()
             case SPOOL_UP:
             case THROTTLE_UNLIMITED:
             case SPOOL_DOWN:
-                // TODO: compute motor_out[i].
                 // Get states.
                 VectorN<float, 12> x;
                 _copter.get_vicon_pos(x[0], x[1], x[2]);
@@ -152,18 +160,24 @@ void AP_MotorsMatrix::output_to_motors()
                 _copter.get_vicon_pos_speed(x[6], x[7], x[8]);
                 _copter.get_vicon_rpy_speed(x[9], x[10], x[11]);
 
-                // Right now let's hard code the target.
-                // Note that in the NED frame, negative z means positive altitude.
-                Vector3f target(0.0, 0.0, -0.75);
-                VectorN<float, 12> x0;
-                x0.zero();
-                for (i=0; i<3; ++i) x0[i] = target[i];
+                // TODO: get x0 from RC transmitter.
+                const VectorN<float, 12> x0(x_eq);
+                const VectorN<float, kMotorNum> u0(u_eq);
+                // u = -K(x - x0) + u0.
+                VectorN<float, kMotorNum> u = u0;
+                const VectorN<float, 12> dx = x - x0;
+                for (i=0; i<kMotorNum; ++i) {
+                    const VectorN<float, 12> Ki(K[i]);
+                    u[i] -= Ki * dx;
+                }
 
-                const VectorN<float, 5> u0(u_eq);
-                // TODO: compute K?
                 // TODO: get voltage?
-                for (i=0; i<5; ++i) {
-                    motor_out[i] = thrust_to_pwm(u0[i], 15.0);
+                const int16_t pwm_min = get_pwm_output_min();
+                const int16_t pwm_max = get_pwm_output_max();
+                for (i=0; i<kMotorNum; ++i) {
+                    motor_out[i] = thrust_to_pwm(u[i], 15.0);
+                    if (motor_out[i] < pwm_min) motor_out[i] = pwm_min;
+                    if (motor_out[i] > pwm_max) motor_out[i] = pwm_max;
                 }
                 break;
         }
