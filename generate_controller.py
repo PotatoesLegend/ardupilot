@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import utility
 import copter_dynamics
-import control
 
 ################################################################################
 # Helper functions.
@@ -336,7 +335,7 @@ x_eq = np.zeros(12)
 A, B = copter_dynamics.linearize_copter(mass, moi, motor_matrix, x_eq, u_eq) 
 # LQR.
 R = np.diag(np.ones(motor_matrix.shape[1]))
-K = control.lqr(A, B, Q, R)
+K = copter_dynamics.lqr(A, B, Q, R)
 
 # Update AP_MotorsMatrix.cpp.
 utility.print_success('Generating code...')
