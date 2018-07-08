@@ -95,7 +95,7 @@ def compute_moment_of_inertia(frame_type, rotor_weight, arm_length):
 
 def compute_force_equilibrium(mass, motor_matrix):
     motor_num = motor_matrix.shape[1]
-    g = 9.8
+    g = 9.81
     # motor_matrix * u_eq = [0, 0, -mass * g, 0, 0, 0]
     target = np.array([0, 0, -mass * g, 0, 0, 0])
     u_eq, _, _, _ = np.linalg.lstsq(motor_matrix, target)
@@ -105,12 +105,206 @@ def compute_force_equilibrium(mass, motor_matrix):
         raise ValueError
     return u_eq
 
+def rotate_x(roll):
+    c = np.cos(roll)
+    s = np.sin(roll)
+    return np.array([[1.0, 0.0, 0.0],
+        [0.0, c, -s],
+        [0.0, s, c]])
+
+def rotate_y(pitch):
+    c = np.cos(pitch)
+    s = np.sin(pitch)
+    return np.array([[c, 0.0, s],
+        [0.0, 1.0, 0.0],
+        [-s, 0.0, c]])
+
+def rotate_z(yaw):
+    c = np.cos(yaw)
+    s = np.sin(yaw)
+    return np.array([[c, -s, 0.0],
+        [s, c, 0.0],
+        [0.0, 0.0, 1.0]])
+
+def rpy_to_rotation(rpy):
+    roll, pitch, yaw = rpy
+    return np.dot(np.dot(rotate_z(yaw), rotate_y(pitch)), rotate_x(roll))
+
+def rpy_to_rotation_partial_derivative(rpy):
+    roll, pitch, yaw = rpy
+    R_roll = rotate_x(roll)
+    R_pitch = rotate_y(pitch)
+    R_yaw = rotate_z(yaw)
+
+    dR_roll = np.dot(np.array([[1.0, 0.0, 0.0],
+        [0.0, 0.0, -1.0],
+        [0.0, 1.0, 0.0]]), R_roll)
+    dR_roll[0, 0] = 0.0
+    dR_pitch = np.dot(np.array([[0.0, 0.0, 1.0],
+        [0.0, 1.0, 0.0],
+        [-1.0, 0.0, 0.0]]), R_pitch)
+    dR_pitch[1, 1] = 0.0
+    dR_yaw = np.dot(np.array([[0.0, -1.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0]]), R_yaw)
+    dR_yaw[2, 2] = 0.0
+
+    A_left = np.dot(np.dot(R_yaw, R_pitch), dR_roll)
+    A_mid = np.dot(np.dot(R_yaw, dR_pitch), R_roll)
+    A_right = np.dot(np.dot(dR_yaw, R_pitch), R_roll)
+    return np.hstack((A_left, A_mid, A_right))
+
+def rpy_rate_to_body_angular_rate_matrix(rpy):
+    roll, pitch, yaw = rpy
+    s_roll = np.sin(roll)
+    c_roll = np.cos(roll)
+    s_pitch = np.sin(pitch)
+    c_pitch = np.cos(pitch)
+    return np.array([[1.0, 0.0, -s_pitch],
+        [0.0, c_roll, s_roll * c_pitch],
+        [0.0, -s_roll, c_roll * c_pitch]])
+
+def rpy_rate_to_body_angular_rate(rpy, rpy_dot):
+    return np.dot(rpy_rate_to_body_angular_rate_matrix(rpy), rpy_dot)
+
+def rpy_rate_to_body_angular_rate_matrix_derivative(rpy, rpy_dot):
+    roll, pitch, _ = rpy
+    s_roll = np.sin(roll)
+    c_roll = np.cos(roll)
+    s_pitch = np.sin(pitch)
+    c_pitch = np.cos(pitch)
+    roll_dot, pitch_dot, _ = rpy_dot
+    return np.array([[0.0, 0.0, -c_pitch * pitch_dot],
+        [0.0, -s_roll * roll_dot, c_roll * c_pitch * roll_dot - s_roll * s_pitch * pitch_dot],
+        [0.0, -c_roll * roll_dot, -s_roll * c_pitch * roll_dot - c_roll * s_pitch * pitch_dot]])
+
+def rpy_rate_to_body_angular_rate_matrix_derivative_partial_derivative(rpy, rpy_dot):
+    roll, pitch, _ = rpy
+    s_roll = np.sin(roll)
+    c_roll = np.cos(roll)
+    s_pitch = np.sin(pitch)
+    c_pitch = np.cos(pitch)
+    roll_dot, pitch_dot, _ = rpy_dot
+    A_left = np.array([[0.0, 0.0, 0.0],
+        [0.0, -c_roll * roll_dot, -s_roll * c_pitch * roll_dot - c_roll * s_pitch * pitch_dot],
+        [0.0, s_roll * roll_dot, -c_roll * c_pitch * roll_dot + s_roll * s_pitch * pitch_dot]])
+    A_mid = np.array([[0.0, 0.0, s_pitch * pitch_dot],
+        [0.0, 0.0, c_roll * (-s_pitch) * roll_dot - s_roll * c_pitch * pitch_dot],
+        [0.0, 0.0, -s_roll * (-s_pitch) * roll_dot - c_roll * c_pitch * pitch_dot]])
+    return np.hstack((A_left, A_mid, np.zeros((3, 3)), rpy_rate_to_body_angular_rate_matrix_partial_derivative(rpy)))
+
+def rpy_rate_to_body_angular_rate_matrix_partial_derivative(rpy):
+    roll, pitch, _ = rpy
+    s_roll = np.sin(roll)
+    c_roll = np.cos(roll)
+    s_pitch = np.sin(pitch)
+    c_pitch = np.cos(pitch)
+    A_left = np.array([[0.0, 0.0, 0.0],
+        [0.0, -s_roll, c_roll * c_pitch],
+        [0.0, -c_roll, -s_roll * c_pitch]])
+    A_mid = np.array([[0.0, 0.0, -c_pitch],
+        [0.0, 0.0, -s_roll * s_pitch],
+        [0.0, 0.0, -c_roll * s_pitch]])
+    return np.hstack((A_left, A_mid, np.zeros((3, 3))))
+
+def rpy_rate_to_body_angular_rate_partial_derivative(rpy, rpy_dot):
+    B = rpy_rate_to_body_angular_rate_matrix_partial_derivative(rpy)
+    rpy_dot_col = rpy_dot.reshape(-1, 1)
+    return np.hstack((np.dot(B[:, :3], rpy_dot_col), np.dot(B[:, 3:6], rpy_dot_col), np.dot(B[:, 6:], rpy_dot_col), rpy_rate_to_body_angular_rate_matrix(rpy)))
+
+def skew_matrix(x):
+    x0, x1, x2 = x
+    return np.array([[0, -x2, x1],
+        [x2, 0, -x0],
+        [-x1, x0, 0]])
+
+def rpy_rate_to_body_angular_rate_matrix_inverse(rpy):
+    # Reference:
+    # http://www.princeton.edu/~stengel/MAE331Lecture9.pdf.
+    roll, pitch, yaw = rpy
+    s_roll = np.sin(roll)
+    c_roll = np.cos(roll)
+    s_pitch = np.sin(pitch)
+    c_pitch = np.cos(pitch)
+    t_pitch = np.tan(pitch)
+    return np.array([[1.0, s_roll * t_pitch, c_roll * t_pitch],
+        [0.0, c_roll, -s_roll],
+        [0.0, s_roll / c_pitch, c_roll / c_pitch]])
+
 def linearize_copter(mass, moment_of_inertia, motor_matrix, x_eq, u_eq):
     # mass is a scalar in kg. moment_of_inertia is a 3 x 3 matrix in kgm^2.
+    if not np.isscalar(mass):
+        utility.print_error('expect to see a scalar mass.')
+        raise ValueError
+    if moment_of_inertia.shape[0] != 3 or moment_of_inertia.shape[1] != 3:
+        utility.print_error('expect to see a 3 x 3 moment of inertia matrix.')
+        raise ValueError
+    if motor_matrix.shape[0] != 6:
+        utility.print_error('expect to see a 6 x N motor matrix.')
+        raise ValueError
+    if len(x_eq) != 12:
+        utility.print_error('expect to see a 12 dimensional x_eq.')
+        raise ValueError
     motor_num = motor_matrix.shape[1]
-    # TODO: compute A and B.
-    A = np.eye(12)
-    B = np.eye(12, motor_num)
+    if len(u_eq) != motor_num:
+        utility.print_error('rotor number and u_eq dimension mismatch.')
+        raise ValueError
+    A = np.zeros((12, 12))
+    B = np.zeros((12, motor_num))
+
+    # Make sure they are column vectors.
+    xyz = x_eq[:3]
+    rpy = x_eq[3:6]
+    uvw = x_eq[6:9]
+    rpy_dot = x_eq[9:]
+
+    R = rpy_to_rotation(rpy)
+    dR_drpy = rpy_to_rotation_partial_derivative(rpy)
+    A[:3, 3] = np.dot(dR_drpy[:, :3], uvw)
+    A[:3, 4] = np.dot(dR_drpy[:, 3:6], uvw)
+    A[:3, 5] = np.dot(dR_drpy[:, 6:], uvw)
+    A[:3, 6:9] = R
+
+    A[3:6, 9:] = np.eye(3)
+
+    body_w = rpy_rate_to_body_angular_rate(rpy, rpy_dot)
+    d_body_w = rpy_rate_to_body_angular_rate_partial_derivative(rpy, rpy_dot)
+    A[6:9, 3:6] += np.dot(skew_matrix(uvw), d_body_w[:, :3])
+    A[6:9, 9:12] += np.dot(skew_matrix(uvw), d_body_w[:, 3:])
+    A[6:9, 6:9] += -skew_matrix(body_w)
+
+    g = 9.81
+    z = np.array([0.0, 0.0, 1.0])
+    A[6:9, 3] += np.dot(np.transpose(dR_drpy[:, :3]), g * z)
+    A[6:9, 4] += np.dot(np.transpose(dR_drpy[:, 3:6]), g * z)
+    A[6:9, 5] += np.dot(np.transpose(dR_drpy[:, 6:]), g * z)
+    
+    B[6:9, :] += motor_matrix[:3, :] / mass
+
+    H = motor_matrix[3:, :]
+    I0 = moment_of_inertia
+    I0_inv = np.linalg.inv(I0)
+    dL_drpy = rpy_rate_to_body_angular_rate_matrix_partial_derivative(rpy)
+    L_inv = rpy_rate_to_body_angular_rate_matrix_inverse(rpy)
+    dL_inv_drpy = np.hstack((-np.dot(np.dot(L_inv, dL_drpy[:, :3]), L_inv),
+        -np.dot(np.dot(L_inv, dL_drpy[:, 3:6]), L_inv),
+        -np.dot(np.dot(L_inv, dL_drpy[:, 6:]), L_inv)))
+    L_dot = rpy_rate_to_body_angular_rate_matrix_derivative(rpy, rpy_dot)
+    dL_dot = rpy_rate_to_body_angular_rate_matrix_derivative_partial_derivative(rpy, rpy_dot)
+    B[9:, :] = np.dot(np.dot(L_inv, I0_inv), H)
+
+    body_torque = np.dot(H, u_eq)
+    body_w_dot = np.dot(I0_inv, body_torque - np.cross(body_w, np.dot(I0, body_w)))
+    d_body_w_dot_d_rpy = np.dot(np.dot(I0_inv, skew_matrix(np.dot(I0, body_w)) - np.dot(skew_matrix(body_w), I0)), d_body_w[:, :3])
+    for i in range(3):
+        A[9:, 3 + i] += np.dot(dL_inv_drpy[:, 3 * i : 3 * i + 3], body_w_dot - np.dot(L_dot, rpy_dot))
+        A[9:, 3 + i] += np.dot(L_inv, d_body_w_dot_d_rpy[:, i] - np.dot(dL_dot[:, 3 * i : 3 * i + 3], rpy_dot))
+
+    d_body_w_dot_d_rpy_dot = np.dot(np.dot(I0_inv, skew_matrix(np.dot(I0, body_w)) - np.dot(skew_matrix(body_w), I0)), d_body_w[:, 3:])
+    A[9:, 9:] += np.dot(L_inv, d_body_w_dot_d_rpy_dot - L_dot)
+    A[9:, 9] += -np.dot(np.dot(L_inv, dL_dot[:, 9:12]), rpy_dot)
+    A[9:, 10] += -np.dot(np.dot(L_inv, dL_dot[:, 12:15]), rpy_dot)
+    A[9:, 11] += -np.dot(np.dot(L_inv, dL_dot[:, 15:]), rpy_dot)
     return A, B
 
 def lqr(A, B, Q, R, tol=1e-9, max_iter=100):
@@ -155,9 +349,39 @@ def test_lqr(A, B, Q, R, K, rtol=1e-5, atol=1e-5):
         print(K0)
         raise ValueError
 
+def test_linearization(mass, moment_of_inertia, motor_matrix, x_eq, u_eq, A, B, rtol=1e-5, atol=1e-4):
+    A0, B0 = linearize_copter(mass, moment_of_inertia, motor_matrix, x_eq, u_eq)
+    if np.allclose(A, A0, rtol=rtol, atol=atol) and np.allclose(B, B0, rtol=rtol, atol=atol):
+        utility.print_success('Linearization test succeeded.')
+    else:
+        utility.print_error('Linearization test failed.')
+        print('expected A = ')
+        print(A)
+        print('actual A = ')
+        print(A)
+        print('expected B = ')
+        print(B)
+        print('actual B = ')
+        print(B)
+        raise ValueError
+
 if __name__ == '__main__':
-    # Test LQR.
-    # Quadcopter A, B, Q, R:
+    # Test linearization and LQR.
+    # Quadcopter data.
+    mass = 1.26652
+    moment_of_inertia = np.array([[0.0225721, -2.82212e-11, 0.000104025],
+        [-2.82212e-11, 0.0228311, -1.7167e-11],
+        [0.000104025, -1.7167e-11, 0.0432627],
+    ])
+    motor_matrix = np.array([[-0, -0, -0, -0],
+        [-0, -0, -0, -0],
+        [-1, -1, -1, -1],
+        [4.50462e-10, -0.23, 4.50462e-10, 0.23],
+        [0.237563, 0.007563, -0.222437, 0.007563],
+        [-0.014664, 0.014664, -0.014664, 0.014664],
+    ])
+    x_eq = np.zeros(12)
+    u_eq = np.array([2.90185, 3.10613, 3.3104, 3.10613])
     A = np.array([[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
@@ -184,6 +408,7 @@ if __name__ == '__main__':
         [10.4052, 0.331258, -9.74271, 0.331258],
         [-0.338956, 0.363457, -0.338956, 0.314455],
     ])
+    test_linearization(mass, moment_of_inertia, motor_matrix, x_eq, u_eq, A, B)
     Q = np.eye(12) * 10.0
     R = np.eye(4)
     K = np.array([[-2.30408, -0.000362873, -1.48028, -0.00844603, 13.2134, -1.58114, -3.39354, -0.000876037, -1.75113, -0.00489455, 2.57541, -2.19827],
@@ -193,7 +418,21 @@ if __name__ == '__main__':
     ])
     test_lqr(A, B, Q, R, K)
 
-    # Pentacopter A, B, Q, R:
+    # Pentacopter data.
+    mass = 2.02884
+    moment_of_inertia = np.array([[0.0926367, 0.000863829, 0.000301719],
+        [0.000863829, 0.135731, -0.000149694],
+        [0.000301719, -0.000149694, 0.223905],
+    ])
+    motor_matrix = np.array([[-0, -0, -0, -0, -0],
+        [-0, -0, -0, -0, -0],
+        [-1, -1, -1, -1, -1],
+        [0.284718, -0.275282, 0.284718, -0.275282, 0.00471781],
+        [-0.370248, -0.370248, 0.189752, 0.189752, 0.489752],
+        [-0.0168552, 0.0168552, 0.0168552, -0.0168552, -0.0168552],
+    ])
+    x_eq = np.zeros(12)
+    u_eq = np.array([3.34573, 5.12607, 4.82539, 3.38041, 3.22532])
     A = np.array([[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
@@ -220,6 +459,7 @@ if __name__ == '__main__':
         [-2.74762, -2.70897, 1.3786, 1.41691, 3.60805],
         [-0.0812917, 0.0774378, 0.072076, -0.0703091, -0.0728897],
     ])
+    test_linearization(mass, moment_of_inertia, motor_matrix, x_eq, u_eq, A, B)
     Q = np.eye(12) * 10.0
     R = np.eye(5)
     K = np.array([[1.53513, 1.60902, -1.45832, 9.8616, -9.54257, -1.71071, 2.31057, 2.41348, -1.78599, 2.04915, -2.04151, -3.78176],
@@ -230,7 +470,21 @@ if __name__ == '__main__':
     ])
     test_lqr(A, B, Q, R, K)
 
-    # Vtail A, B, Q, R:
+    # Vtail data.
+    mass = 1.428674
+    moment_of_inertia = np.array([[0.029888, -2.9816e-11, 0.00879599],
+        [-2.9816e-11, 0.0585, -6.22951e-12],
+        [0.00879599, -6.22951e-12, 0.0839344],
+    ])
+    motor_matrix = np.array([[-0, -0, 0, -0],
+        [-0.707107, -0, 0.707107, -0],
+        [-0.707107, -1, -0.707107, -1],
+        [0.119885, -0.23, -0.119885, 0.23],
+        [-0.165482, 0.240637, -0.144744, 0.240637],
+        [0.144744, 0.014664, -0.165482, 0.014664],
+    ])
+    x_eq = np.array([0, 0, -0.75, 0.00307832, 6.61417e-25, 0, 0, 0, 0, 0, 0, 0])
+    u_eq = np.array([5.21382, 3.35836, 5.15281, 3.32655])
     A = np.array([[0, 0, 0, 0, 0, 0, 1, 2.03605e-27, 6.61413e-25, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0.999995, -0.00307832, 0, 0, 0],
         [0, 0, 0, 0, -0, 0, -6.61417e-25, 0.00307832, 0.999995, 0, 0, 0],
@@ -257,6 +511,7 @@ if __name__ == '__main__':
         [-2.83289, 4.11031, -2.46932, 4.11543],
         [1.33693, 1.02504, -1.60819, -0.639179],
     ])
+    test_linearization(mass, moment_of_inertia, motor_matrix, x_eq, u_eq, A, B)
     Q = np.eye(12) * 10.0
     R = np.eye(4)
     K = np.array([[1.34545, 0.432376, -1.87183, 4.99102, -8.40221, 2.1211, 2.02617, 0.826243, -2.34776, 1.09457, -1.82723, 2.47247],
@@ -266,7 +521,21 @@ if __name__ == '__main__':
     ])
     test_lqr(A, B, Q, R, K)
 
-    # Y6 A, B, Q, R:
+    # Y6 data.
+    mass = 2.07717
+    moment_of_inertia = np.array([[0.0620513, 0.000933375, 0.00909391],
+        [0.000933375, 0.101875, -0.000299824],
+        [0.00909391, -0.000299824, 0.157657],
+    ])
+    motor_matrix = np.array([[-0, -0, -0, -0, -0, -0],
+        [-0, -1.22465e-16, -0, -1.22465e-16, -0, -1.22465e-16],
+        [-1, -1, -1, -1, -1, -1],
+        [-0.275392, -0.275392, 0.284608, 0.284608, 0.00460803, 0.00460803],
+        [0.182486, 0.182486, 0.182486, 0.182486, -0.377514, -0.377514],
+        [-0.014664, 0.014664, -0.014664, 0.014664, 0.014664, -0.014664],
+    ])
+    x_eq = np.zeros(12)
+    u_eq = np.array([3.51805, 3.51805, 3.35038, 3.35038, 3.32012, 3.32012])
     A = np.array([[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
@@ -293,6 +562,7 @@ if __name__ == '__main__':
         [1.83291, 1.83371, 1.74796, 1.74876, -3.7065, -3.70731],
         [0.169496, 0.357108, -0.355745, -0.168132, 0.0791327, -0.10848],
     ])
+    test_linearization(mass, moment_of_inertia, motor_matrix, x_eq, u_eq, A, B)
     Q = np.eye(12) * 10.0
     R = np.eye(6)
     K = np.array([[-0.891793, -1.55405, -1.33479, -9.30416, 5.44626, -1.29407, -1.33606, -2.31223, -1.65511, -1.99142, 1.13482, -2.51997],
