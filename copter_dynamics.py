@@ -61,23 +61,37 @@ def compute_motor_matrix(frame_type, torque_to_thrust_ratio, arm_length):
     return np.zeros((6, 0))
 
 def compute_quad_x_moment_of_inertia(rotor_weight, arm_length):
-    angle = np.pi / 4.0
-    Ixx = Iyy = ((arm_length * np.sin(angle)) ** 2) * rotor_weight * 4
-    Izz = rotor_weight * (arm_length ** 2) * 4
-    return np.diag(np.array([Ixx, Iyy, Izz]))
+    offset = np.pi / 4.0
+    angle = np.pi / 2.0
+    moi = np.zeros((3, 3))
+    for i in range(4):
+        a = offset + i * angle
+        v = np.array([np.cos(a), np.sin(a), 0]) * arm_length
+        s = skew_matrix(v)
+        moi -= np.dot(s, s) * rotor_weight
+    return moi
 
 def compute_quad_plus_moment_of_inertia(rotor_weight, arm_length):
+    offset = 0
     angle = np.pi / 2.0
-    Ixx = Iyy = 2.0 * rotor_weight * (arm_length ** 2)
-    Izz = 4.0 * rotor_weight * (arm_length ** 2)
-    return np.diag(np.array([Ixx, Iyy, Izz]))
+    moi = np.zeros((3, 3))
+    for i in range(4):
+        a = offset + i * angle
+        v = np.array([np.cos(a), np.sin(a), 0]) * arm_length
+        s = skew_matrix(v)
+        moi -= np.dot(s, s) * rotor_weight
+    return moi
 
 def compute_penta_moment_of_inertia(rotor_weight, arm_length):
-    angle = 2.0 * np.pi / 5
-    Ixx = rotor_weight * (arm_length ** 2) * (2 * (np.sin(angle) ** 2) + 2 * (np.sin(angle * 2) ** 2))
-    Iyy = rotor_weight * (arm_length ** 2) * (1 + 2 * (np.cos(angle) ** 2) + 2 * (np.cos(angle * 2) ** 2))
-    Izz = rotor_weight * (arm_length ** 2) * 5.0
-    return np.diag(np.array([Ixx, Iyy, Izz]))
+    offset = 0
+    angle = 2.0 * np.pi / 5.0
+    moi = np.zeros((3, 3))
+    for i in range(5):
+        a = offset + i * angle
+        v = np.array([np.cos(a), np.sin(a), 0]) * arm_length
+        s = skew_matrix(v)
+        moi -= np.dot(s, s) * rotor_weight
+    return moi
 
 def compute_moment_of_inertia(frame_type, rotor_weight, arm_length):
     # rotor_weight is in kg.
