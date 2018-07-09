@@ -1178,6 +1178,14 @@ public:
     void get_vicon_pos_speed(float& vx, float& vy, float& vz) const;
     void get_vicon_rpy_speed(float& roll_speed, float& pitch_speed, float& yaw_speed) const;
     float get_battery_voltage() const;
+
+    // All angles and angular rates are in radians.
+    float get_roll() const;
+    float get_pitch() const;
+    float get_yaw() const;
+    float get_roll_rate() const;
+    float get_pitch_rate() const;
+    float get_yaw_rate() const;
 #endif
 
     void mavlink_delay_cb();

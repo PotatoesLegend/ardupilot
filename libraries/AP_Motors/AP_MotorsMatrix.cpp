@@ -35,11 +35,11 @@ static const float u_eq[5] = { 3.038193f, 4.198680f, 3.038193f, 2.320973f, 4.198
 static const float x_eq[12] = { 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f };
 static const int kMotorNum = 5;
 static const float K[kMotorNum][12] = {
-    { -0.435007f, -1.343538f, -0.949526f, -7.572633f, 2.443871f, -0.543193f, -0.637277f, -1.969687f, -1.220442f, -1.449128f, 0.464410f, -0.686537f },
-    { 1.141321f, -0.833289f, -1.113573f, -4.717077f, -6.417736f, 1.035368f, 1.672412f, -1.222778f, -1.480727f, -0.912064f, -1.220477f, 1.397495f },
-    { -1.412205f, 0.001459f, -0.949526f, 0.015813f, 7.957200f, -0.543193f, -2.070213f, 0.002580f, -1.220442f, 0.006125f, 1.521713f, -0.686537f },
-    { 1.149083f, 0.834858f, -0.846588f, 4.732652f, -6.513936f, -1.505294f, 1.686746f, 1.225493f, -1.057948f, 0.917259f, -1.262498f, -1.961827f },
-    { -0.439818f, 1.342962f, -1.113573f, 7.561287f, 2.503017f, 1.035368f, -0.646127f, 1.968418f, -1.480727f, 1.442585f, 0.490276f, 1.397495f },
+    { -0.308043f, -0.950349f, -0.671349f, -5.438282f, 1.756804f, -0.383051f, -0.453130f, -1.398954f, -0.930757f, -1.056540f, 0.338380f, -0.520666f },
+    { 0.807749f, -0.588706f, -0.787441f, -3.383546f, -4.611611f, 0.731718f, 1.188515f, -0.867362f, -1.137326f, -0.665645f, -0.889256f, 1.076180f },
+    { -0.999026f, 0.000708f, -0.671349f, 0.009701f, 5.714996f, -0.383051f, -1.470509f, 0.001349f, -0.930757f, 0.004670f, 1.109394f, -0.520666f },
+    { 0.811370f, 0.589495f, -0.598711f, 3.393288f, -4.670460f, -1.065702f, 1.195839f, 0.868828f, -0.802144f, 0.669581f, -0.921599f, -1.501987f },
+    { -0.310285f, 0.950135f, -0.787441f, 5.431476f, 1.792877f, 0.731718f, -0.457639f, 1.398375f, -1.137326f, 1.051428f, 0.358271f, 1.076180f },
 };
 
 static int16_t thrust_to_pwm(const float thrust_in_newton, const float voltage)
@@ -69,6 +69,15 @@ static float remap(const float x, const float x0, const float x1, const float y0
     const float t = (x - x0) / (x1 - x0);
     return (1.0 - t) * y0 + t * y1;
 }
+
+static float target_x = 0.0;
+static float target_y = 0.0;
+static float target_z = 0.0;
+static float target_yaw = 0.0;
+static bool enter_target_x = false;
+static bool enter_target_y = false;
+static bool enter_target_z = false;
+static bool enter_target_yaw = false;
 
 extern const AP_HAL::HAL& hal;
 
@@ -166,7 +175,10 @@ void AP_MotorsMatrix::output_to_motors()
                 // x, y, z, roll, pitch, yaw, u, v, w, roll_speed, pitch_speed, yaw_speed.
                 VectorN<float, 12> x;
                 _copter.get_vicon_pos(x[0], x[1], x[2]);
+                // TODO: do we want to use Vicon here?
                 _copter.get_vicon_rpy(x[3], x[4], x[5]);
+                x[3] = _copter.get_roll();
+                x[4] = _copter.get_pitch();
                 // Compute the rotational matrix.
                 Matrix3f R;
                 R.from_euler(x[3], x[4], x[5]);
@@ -174,39 +186,76 @@ void AP_MotorsMatrix::output_to_motors()
                 _copter.get_vicon_pos_speed(xyz_dot[0], xyz_dot[1], xyz_dot[2]);
                 const Vector3f uvw = R.transposed() * xyz_dot;
                 x[6] = uvw[0]; x[7] = uvw[1]; x[8] = uvw[2];
-                _copter.get_vicon_rpy_speed(x[9], x[10], x[11]);
+                // TODO: do we want to use Vicon here?
+                //_copter.get_vicon_rpy_speed(x[9], x[10], x[11]);
+                x[9] = _copter.get_roll_rate();
+                x[10] = _copter.get_pitch_rate();
+                x[11] = _copter.get_yaw_rate();
 
                 // Input PWMs are in the range of [1000, 2000].
                 const float roll_pwm = static_cast<float>(hal.rcin->read(0));
                 const float pitch_pwm = static_cast<float>(hal.rcin->read(1));
                 const float thr_pwm = static_cast<float>(hal.rcin->read(2));
                 const float yaw_pwm = static_cast<float>(hal.rcin->read(3));
-                // Map roll_pwm from [1000, 2000] to y0 = y + [-0.2, 0.2]
-                // Map pitch_pwm from [1000, 2000] to x0 = x + [-0.2, 0.2]
-                // Map thr_pwm from [1000, 2000] to z0 = z + [0.2, -0.2]
-                // Map yaw_pwm from [1000, 2000] to yaw0 = yaw + [-0.3, 0.3]
-                const float max_d = 0.2f;
-                const float max_yaw = 0.3f;
+                // Map roll_pwm from [1000, 2000] to y0 = y + [-max_d, max_d]
+                // Map pitch_pwm from [1000, 2000] to x0 = x + [max_d, -max_d]
+                // Map thr_pwm from [1000, 2000] to z0 = z + [max_d, -max_d]
+                // Map yaw_pwm from [1000, 2000] to yaw0 = yaw + [-max_yaw, max_yaw]
+                const float max_d = 1.0f;
+                const float max_yaw = 0.5f;
                 const int16_t pwm_min = get_pwm_output_min();
                 const int16_t pwm_max = get_pwm_output_max();
                 const float pwm_min_float = static_cast<float>(pwm_min);
                 const float pwm_max_float = static_cast<float>(pwm_max);
                 float y1 = remap(roll_pwm, pwm_min_float, pwm_max_float, -max_d, max_d);
-                float x1 = remap(pitch_pwm, pwm_min_float, pwm_max_float, -max_d, max_d);
+                float x1 = remap(pitch_pwm, pwm_min_float, pwm_max_float, max_d, -max_d);
                 float z1 = remap(thr_pwm, pwm_min_float, pwm_max_float, max_d, -max_d);
                 float yaw1 = remap(yaw_pwm, pwm_min_float, pwm_max_float, -max_yaw, max_yaw);
                 // Zero out small values in 10% deadzone.
-                if (y1 >= -0.1 * max_d && y1 <= 0.1 * max_d) y1 = 0;
-                if (x1 >= -0.1 * max_d && x1 <= 0.1 * max_d) x1 = 0;
-                if (z1 >= -0.1 * max_d && z1 <= 0.1 * max_d) z1 = 0;
-                if (yaw1 >= -0.1 * max_yaw && yaw1 <= 0.1 * max_yaw) yaw1 = 0;
+                if (y1 >= -0.1 * max_d && y1 <= 0.1 * max_d) {
+                    if (!enter_target_y) {
+                        target_y = x[1];
+                    }
+                    enter_target_y = true;
+                    y1 = target_y - x[1];
+                } else {
+                    enter_target_y = false;
+                }
+                if (x1 >= -0.1 * max_d && x1 <= 0.1 * max_d) {
+                    if (!enter_target_x) {
+                        target_x = x[0];
+                    }
+                    enter_target_x = true;
+                    x1 = target_x - x[0];
+                } else {
+                    enter_target_x = false;
+                }
+                if (z1 >= -0.1 * max_d && z1 <= 0.1 * max_d) {
+                    if (!enter_target_z) {
+                        target_z = x[2];
+                    }
+                    enter_target_z = true;
+                    z1 = target_z - x[2];
+                } else {
+                    enter_target_z = false;
+                }
+                if (yaw1 >= -0.1 * max_yaw && yaw1 <= 0.1 * max_yaw) {
+                    if (!enter_target_yaw) {
+                        target_yaw = x[5];
+                    }
+                    enter_target_yaw = true;
+                    yaw1 = target_yaw - x[5];
+                } else {
+                    enter_target_yaw = false;
+                }
 
                 // u = -K(x - x0) + u0.
-                const VectorN<float, 12> x0(x_eq);
+                VectorN<float, 12> x0(x_eq);
+                x0[2] = -0.65f;
                 const VectorN<float, kMotorNum> u0(u_eq);
                 VectorN<float, kMotorNum> u = u0;
                 VectorN<float, 12> dx = x - x0;
-                dx[0] = -x1; dx[1] = -y1; dx[2] = -z1; dx[5] = -yaw1;
+                //dx[0] = -x1; dx[1] = -y1; dx[2] = -z1; dx[5] = -yaw1;
                 for (i=0; i<kMotorNum; ++i) {
                     const VectorN<float, 12> Ki(K[i]);
                     u[i] -= Ki * dx;

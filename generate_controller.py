@@ -178,7 +178,7 @@ parser.add_argument('--rotor-weight', help='rotor mass in grams', type=float, de
 parser.add_argument('--ixx', help='x component of the moment of inertia (type 0 if you do not have them)', type=float, default=0.0)
 parser.add_argument('--iyy', help='y component of the moment of inertia (type 0 if you do not have them)', type=float, default=0.0)
 parser.add_argument('--izz', help='z component of the moment of inertia (type 0 if you do not have them)', type=float, default=0.0)
-parser.add_argument('--q', help='diagonal elements in Q matrix for LQR (assume R = 1).', type=str, default='10')
+parser.add_argument('--q', help='diagonal elements in Q matrix for LQR (assume R = 1).', type=str, default='2.5')
 args = parser.parse_args()
 motor_dir = args.dir
 frame_type = acquire_frame_type(args)

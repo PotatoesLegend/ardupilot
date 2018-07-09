@@ -8,6 +8,36 @@ float Copter::get_battery_voltage() const
 {
     return battery.voltage();
 }
+
+// All angles and angular rates are in radians.
+float Copter::get_roll() const
+{
+    return ahrs.roll;
+}
+
+float Copter::get_pitch() const
+{
+    return ahrs.pitch;
+}
+
+float Copter::get_yaw() const
+{
+    return ahrs.yaw;
+}
+
+float Copter::get_roll_rate() const
+{
+    return ahrs.get_gyro().x;
+}
+
+float Copter::get_pitch_rate() const
+{
+    return ahrs.get_gyro().y;
+}
+
+float Copter::get_yaw_rate() const {
+    return ahrs.get_gyro().z;
+}
 #endif
 
 void Copter::init_barometer(bool full_calibration)
