@@ -64,6 +64,12 @@ static int16_t thrust_to_pwm(const float thrust_in_newton, const float voltage)
 }
 // End of LQR. This part is auto generated. DO NOT MANUALLY MODIFY IT.
 
+static float remap(const float x, const float x0, const float x1, const float y0, const float y1)
+{
+    const float t = (x - x0) / (x1 - x0);
+    return (1.0 - t) * y0 + t * y1;
+}
+
 extern const AP_HAL::HAL& hal;
 
 // init
@@ -170,20 +176,40 @@ void AP_MotorsMatrix::output_to_motors()
                 x[6] = uvw[0]; x[7] = uvw[1]; x[8] = uvw[2];
                 _copter.get_vicon_rpy_speed(x[9], x[10], x[11]);
 
-                // TODO: get x0 from RC transmitter.
+                // Input PWMs are in the range of [1000, 2000].
+                const float roll_pwm = static_cast<float>(hal.rcin->read(0));
+                const float pitch_pwm = static_cast<float>(hal.rcin->read(1));
+                const float thr_pwm = static_cast<float>(hal.rcin->read(2));
+                // TODO: change yaw in the future.
+                //const float yaw_pwm = static_cast<float>(hal.rcin->read(3));
+                // Map roll_pwm from [1000, 2000] to y0 = y + [-0.2, 0.2]
+                // Map pitch_pwm from [1000, 2000] to x0 = x + [-0.2, 0.2]
+                // Map thr_pwm from [1000, 2000] to z0 = z + [0.2, -0.2]
+                const float max_d = 0.2f;
+                const int16_t pwm_min = get_pwm_output_min();
+                const int16_t pwm_max = get_pwm_output_max();
+                const float pwm_min_float = static_cast<float>(pwm_min);
+                const float pwm_max_float = static_cast<float>(pwm_max);
+                float y1 = remap(roll_pwm, pwm_min_float, pwm_max_float, -max_d, max_d);
+                float x1 = remap(pitch_pwm, pwm_min_float, pwm_max_float, -max_d, max_d);
+                float z1 = remap(thr_pwm, pwm_min_float, pwm_max_float, max_d, -max_d);
+                // Zero out small values in 10% deadzone.
+                if (y1 >= -0.1 * max_d && y1 <= 0.1 * max_d) y1 = 0;
+                if (x1 >= -0.1 * max_d && x1 <= 0.1 * max_d) x1 = 0;
+                if (z1 >= -0.1 * max_d && z1 <= 0.1 * max_d) z1 = 0;
+
+                // u = -K(x - x0) + u0.
                 const VectorN<float, 12> x0(x_eq);
                 const VectorN<float, kMotorNum> u0(u_eq);
-                // u = -K(x - x0) + u0.
                 VectorN<float, kMotorNum> u = u0;
-                const VectorN<float, 12> dx = x - x0;
+                VectorN<float, 12> dx = x - x0;
+                dx[0] = -x1; dx[1] = -y1; dx[2] = -z1;
                 for (i=0; i<kMotorNum; ++i) {
                     const VectorN<float, 12> Ki(K[i]);
                     u[i] -= Ki * dx;
                 }
 
                 const float volt = _copter.get_battery_voltage();
-                const int16_t pwm_min = get_pwm_output_min();
-                const int16_t pwm_max = get_pwm_output_max();
                 for (i=0; i<kMotorNum; ++i) {
                     motor_out[i] = thrust_to_pwm(u[i], volt);
                     if (motor_out[i] < pwm_min) motor_out[i] = pwm_min;
