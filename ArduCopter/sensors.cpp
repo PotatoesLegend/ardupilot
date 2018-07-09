@@ -3,7 +3,6 @@
 // Tao Du
 // taodu@csail.mit.edu
 // Jul 8, 2018
-#if VICON_ENABLED == ENABLED
 float Copter::get_battery_voltage() const
 {
     return battery.voltage();
@@ -38,7 +37,6 @@ float Copter::get_pitch_rate() const
 float Copter::get_yaw_rate() const {
     return ahrs.get_gyro().z;
 }
-#endif
 
 void Copter::init_barometer(bool full_calibration)
 {

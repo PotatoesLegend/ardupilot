@@ -139,7 +139,7 @@
 // Use Vicon
 //
 #ifndef VICON_ENABLED
- # define VICON_ENABLED ENABLED
+ # define VICON_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////

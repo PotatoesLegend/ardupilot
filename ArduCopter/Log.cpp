@@ -884,6 +884,7 @@ void Copter::set_vicon_data(float x, float y, float z, float roll, float pitch, 
     vicon_rpy_speed[1] = vpitch;
     vicon_rpy_speed[2] = vroll;
 }
+#endif
 
 void Copter::get_vicon_pos(float& x, float& y, float& z) const
 {
@@ -912,8 +913,6 @@ void Copter::get_vicon_rpy_speed(float& roll_speed, float& pitch_speed, float& y
     pitch_speed = vicon_rpy_speed[1];
     yaw_speed = vicon_rpy_speed[2];
 }
-
-#endif
 
 // Write beacon position and distances
 void Copter::Log_Write_Beacon()
@@ -973,8 +972,10 @@ const struct LogStructure Copter::log_structure[] = {
     // taodu@csail.mit.edu
     // Jun 21, 2018
     // Add a new entry for logging Vicon.
+#if VICON_ENABLED == ENABLED
     { LOG_VICON_MSG, sizeof(log_Vicon),
       "VCN",   "Qffffffffffff",      "TimeUS,X,Y,Z,Roll,Pitch,Yaw,VX,VY,VZ,VRoll,VPitch,VYaw" },
+#endif
 };
 
 #if CLI_ENABLED == ENABLED

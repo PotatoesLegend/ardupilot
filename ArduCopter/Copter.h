@@ -605,12 +605,10 @@ private:
     // taodu@csail.mit.edu
     // Jul 4, 2018
     // Store Vicon results.
-#if VICON_ENABLED == ENABLED
     Vector3f vicon_pos;         // In meters.
     Vector3f vicon_rpy;         // In radians.
     Vector3f vicon_pos_speed;   // In m/s.
     Vector3f vicon_rpy_speed;   // In rad/s.
-#endif
 
     // Top-level logic
     // setup the var_info table
@@ -1172,7 +1170,6 @@ public:
     // Tao Du
     // taodu@csail.mit.edu
     // Jul 4, 2018
-#if VICON_ENABLED == ENABLED
     void get_vicon_pos(float& x, float& y, float& z) const;
     void get_vicon_rpy(float& roll, float& pitch, float& yaw) const;
     void get_vicon_pos_speed(float& vx, float& vy, float& vz) const;
@@ -1186,7 +1183,6 @@ public:
     float get_roll_rate() const;
     float get_pitch_rate() const;
     float get_yaw_rate() const;
-#endif
 
     void mavlink_delay_cb();
     void failsafe_check();
