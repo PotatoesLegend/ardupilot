@@ -74,12 +74,12 @@ def send_rc(data):
 # Time stamp in seconds.
 init_time_stamp = time.time()
 last_time_offset = 0
-vx = PolynomialFilter(2)
-vy = PolynomialFilter(2)
-vz = PolynomialFilter(2)
-vroll = PolynomialFilter(2)
-vpitch = PolynomialFilter(2)
-vyaw = PolynomialFilter(2)
+vx = OneSideSmoothFilter(5)
+vy = OneSideSmoothFilter(5)
+vz = OneSideSmoothFilter(5)
+vroll = OneSideSmoothFilter(5)
+vpitch = OneSideSmoothFilter(5)
+vyaw = OneSideSmoothFilter(5)
 last_yaw = np.nan
 def send_vicon(data):
     # Forwards Vicon data to the board.
@@ -135,13 +135,14 @@ def send_vicon(data):
     global last_time_offset
     if new_to - last_time_offset > 1.0 / opts.vicon_rate:
         # Check if we need to round yaw.
+        global last_yaw
         if not np.isnan(last_yaw):
-            y = yaw - last_yaw
+            dy = yaw - last_yaw
             # Find among all y + 2kpi the closest one to 0.
-            y /= 2.0 * np.pi
+            dy /= 2.0 * np.pi
             # Now find among all y + k the closest one to 0.
-            yl = np.floor(y)
-            yc = np.ceil(y)
+            yl = np.floor(dy)
+            yc = np.ceil(dy)
             ks = np.array([-yl, -yc, -yl - 1, -yc + 1])
             ys = yaw + ks * 2.0 * np.pi
             yaw = ys[np.argmin(np.abs(ys - last_yaw))]

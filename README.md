@@ -135,6 +135,8 @@ rosrun roscopter roscopter_node.py --device=/dev/ttyUSB0 --baudrate=57600 --enab
 6. Uncheck `Y` and `Z` and check `CH3` in `RCIN`. If the step function aligns well with the peak of the sine wave, your communication has little or no delay. See the image below for reference:
 ![](figures/radio_telemetry.png)
 
+* Jie proposed a much better way to check if the telemetry has any delay or distortion: you simply put your copter in the real Vicon environment and check the euler angles are the same as those from IMU.
+
 ## Motor test
 You will need to use a [dynamometer](https://www.rcbenchmark.com/dynamometer-series-1580/) to collect data from your motor and propeller. We have provided you a javascript script `discrete_measurement.js` and our test data in the `motor_test/` folder for your reference. Copy this script to RCBenchmark software, make sure you understand all the safety requirements, and run the script to collect data. You only need to measure PWM, current, voltage, thrust, and torque. We suggest you start with a 100% battery and run the script several times until the battery becomes 50%.
 
