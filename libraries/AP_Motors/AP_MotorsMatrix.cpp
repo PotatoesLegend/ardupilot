@@ -20,6 +20,9 @@
  */
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/vectorN.h>
+#include <AP_Math/vector2.h>
+#include <AP_Math/vector3.h>
+#include <AP_Math/matrix3.h>
 #include "AP_MotorsMatrix.h"
 // Tao Du
 // taodu@csail.mit.edu
@@ -28,15 +31,15 @@
 // Beginning of LQR. This part is auto generated. DO NOT MANUALLY MODIFY IT.
 // Tao Du
 // taodu@csail.mit.edu
-static const float u_eq[5] = { 3.035096f, 4.194400f, 3.035096f, 2.318607f, 4.194400f };
+static const float u_eq[5] = { 3.038193f, 4.198680f, 3.038193f, 2.320973f, 4.198680f };
 static const float x_eq[12] = { 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f };
 static const int kMotorNum = 5;
 static const float K[kMotorNum][12] = {
-    { 2.414214f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f },
-    { 0.000000f, 2.414214f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f },
-    { 0.000000f, 0.000000f, 2.414214f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f },
-    { 0.000000f, 0.000000f, 0.000000f, 2.414214f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f },
-    { 0.000000f, 0.000000f, 0.000000f, 0.000000f, 2.414214f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f },
+    { -0.614187f, -1.899318f, -1.342908f, -10.589131f, 3.414050f, -0.770669f, -0.897177f, -2.776365f, -1.623249f, -2.004287f, 0.642666f, -0.918671f },
+    { 1.612312f, -1.179728f, -1.574802f, -6.604151f, -8.968459f, 1.465171f, 2.355639f, -1.726085f, -1.956325f, -1.260393f, -1.688977f, 1.842082f },
+    { -1.996153f, 0.002795f, -1.342908f, 0.025267f, 11.125862f, -0.770669f, -2.917723f, 0.004678f, -1.623249f, 0.008147f, 2.104785f, -0.918671f },
+    { 1.627737f, 1.182620f, -1.197162f, 6.628450f, -9.123279f, -2.125720f, 2.382294f, 1.730838f, -1.414873f, 1.267323f, -1.744320f, -2.598934f },
+    { -0.623756f, 1.897956f, -1.574802f, 10.570306f, 3.509514f, 1.465171f, -0.913672f, 2.773736f, -1.956325f, 1.995795f, 0.676782f, 1.842082f },
 };
 
 static int16_t thrust_to_pwm(const float thrust_in_newton, const float voltage)
@@ -153,11 +156,18 @@ void AP_MotorsMatrix::output_to_motors()
             case SPOOL_UP:
             case THROTTLE_UNLIMITED:
             case SPOOL_DOWN:
-                // Get states.
+                // Get states:
+                // x, y, z, roll, pitch, yaw, u, v, w, roll_speed, pitch_speed, yaw_speed.
                 VectorN<float, 12> x;
                 _copter.get_vicon_pos(x[0], x[1], x[2]);
                 _copter.get_vicon_rpy(x[3], x[4], x[5]);
-                _copter.get_vicon_pos_speed(x[6], x[7], x[8]);
+                // Compute the rotational matrix.
+                Matrix3f R;
+                R.from_euler(x[3], x[4], x[5]);
+                Vector3f xyz_dot;
+                _copter.get_vicon_pos_speed(xyz_dot[0], xyz_dot[1], xyz_dot[2]);
+                const Vector3f uvw = R.transposed() * xyz_dot;
+                x[6] = uvw[0]; x[7] = uvw[1]; x[8] = uvw[2];
                 _copter.get_vicon_rpy_speed(x[9], x[10], x[11]);
 
                 // TODO: get x0 from RC transmitter.
@@ -171,11 +181,11 @@ void AP_MotorsMatrix::output_to_motors()
                     u[i] -= Ki * dx;
                 }
 
-                // TODO: get voltage?
+                const float volt = _copter.get_battery_voltage();
                 const int16_t pwm_min = get_pwm_output_min();
                 const int16_t pwm_max = get_pwm_output_max();
                 for (i=0; i<kMotorNum; ++i) {
-                    motor_out[i] = thrust_to_pwm(u[i], 15.0);
+                    motor_out[i] = thrust_to_pwm(u[i], volt);
                     if (motor_out[i] < pwm_min) motor_out[i] = pwm_min;
                     if (motor_out[i] > pwm_max) motor_out[i] = pwm_max;
                 }

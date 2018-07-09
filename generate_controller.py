@@ -158,9 +158,11 @@ def acquire_moment_of_inertia(args):
 def acquire_q_matrix(args):
     q_str = args.q
     q = [float(v) for v in q_str.strip().split()]
-    if len(q) != 12:
-        utility.print_error('Expect to see 12 elements.')
+    if len(q) != 12 and len(q) != 1:
+        utility.print_error('Expect to see 1 or 12 elements.')
         sys.exit(-1)
+    if len(q) == 1:
+        q = np.ones(12) * q[0]
     Q = np.diag(q)
     return Q
 
@@ -172,11 +174,11 @@ parser.add_argument('--dir', help='directory of motor measurement csv files', ty
 parser.add_argument('--frame', help='frame type', type=str, default='PENTA')
 parser.add_argument('--mass', help='copter mass in grams', type=float, default=1712.0)
 parser.add_argument('--arm-length', help='distance from rotor to center in millimeters', type=float, default=230.0)
-parser.add_argument('--rotor-weight', help='rotor mass in grams', type=float, default=95.0)
+parser.add_argument('--rotor-weight', help='rotor mass in grams', type=float, default=93.0)
 parser.add_argument('--ixx', help='x component of the moment of inertia (type 0 if you do not have them)', type=float, default=0.0)
 parser.add_argument('--iyy', help='y component of the moment of inertia (type 0 if you do not have them)', type=float, default=0.0)
 parser.add_argument('--izz', help='z component of the moment of inertia (type 0 if you do not have them)', type=float, default=0.0)
-parser.add_argument('--q', help='diagonal elements in Q matrix for LQR (assume R = 1).', type=str, default='1 1 1 1 1 1 1 1 1 1 1 1')
+parser.add_argument('--q', help='diagonal elements in Q matrix for LQR (assume R = 1).', type=str, default='10')
 args = parser.parse_args()
 motor_dir = args.dir
 frame_type = acquire_frame_type(args)

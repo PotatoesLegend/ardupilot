@@ -1,5 +1,15 @@
 #include "Copter.h"
 
+// Tao Du
+// taodu@csail.mit.edu
+// Jul 8, 2018
+#if VICON_ENABLED == ENABLED
+float Copter::get_battery_voltage() const
+{
+    return battery.voltage();
+}
+#endif
+
 void Copter::init_barometer(bool full_calibration)
 {
     gcs_send_text(MAV_SEVERITY_INFO, "Calibrating barometer");

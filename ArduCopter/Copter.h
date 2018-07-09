@@ -1177,6 +1177,7 @@ public:
     void get_vicon_rpy(float& roll, float& pitch, float& yaw) const;
     void get_vicon_pos_speed(float& vx, float& vy, float& vz) const;
     void get_vicon_rpy_speed(float& roll_speed, float& pitch_speed, float& yaw_speed) const;
+    float get_battery_voltage() const;
 #endif
 
     void mavlink_delay_cb();
