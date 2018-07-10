@@ -1,7 +1,7 @@
 # ArduPilot project used for holodeck demo
 
 ## Introduction
-This branch maintains the customized firmware I use for the demo in Holodeck. This branch demonstrates:
+This branch maintains the customized firmware I use for the pentacopter demo. This branch demonstrates:
 1. How to create a new MAVLink message to send Vicon data to the board.
 2. How to implement an LQR controller.
 3. How to use ROS to send fake MAVLink messages.
@@ -24,6 +24,9 @@ The steps below are tested on Ubuntu 16.04.
 ```
 ./waf --targets bin/arducopter --upload
 ```
+* Open your Mission Planner, connect to your Pixhawk using a USB cable, select `CONFIG/TUNING` then select `Full Parameter List`, click `Load from file`, and upload `demo.param` in this repository.
+* Use your Mission Planner to calibrate IMU, battery monitor, transmitter, etc. By default it assume you are flying a **pentacopter**.
+* You can stop here and start flying your pentacopter now. If you want to learn more about LQR/Vicon/ROS/MAVLink, please continue reading.
 
 ### Setup ROS to send MAVLink to the board
 You need to install ROS. The code is tested with ROS Lunar.
