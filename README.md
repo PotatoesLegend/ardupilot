@@ -86,7 +86,7 @@ This section is most useful for people flying their copters in [Holodeck](http:/
 ```
 function master() { export ROS_MASTER_URI=http://"$1":11311; }
 master <IP address of the linux machine>
-````
+```
 This allows your local machine to fetch data from rostopics on the linux machine.
 * Now if you run `rostopic` on your machine, you should see your copter.
 * Open a new terminal, then type:
@@ -148,6 +148,25 @@ Once you are done with the measurement, create a new folder in `motor_test` and 
 python get_motor_info.py --dir=<your motor folder>
 ```
 It will fit the data and print the results on the window.
+
+## Debugging
+
+* You need to buy an FTDI cable and a few jumper wires. Follow [this link](http://dev.px4.io/en/debug/system_console.html) and [this link](https://uav-lab.org/2016/07/29/px4-research-log-3-connect-to-pixhawk-via-serial-in-ubuntu/) to connect your Pixhawk v1 to our laptop.
+* There are two connections between Pixhawk and your laptop:
+1. SERIAL 4/5 on Pixhawk - jumper wires - FTDI cable - USB port on your laptop;
+2. Micro-USB port on Pixhawk - USB port on your laptop.
+* Connection 2 is used for uploading firmware only. If you attemp to attach a screen and read its output, you will probably see gibberish information when the firmware is ArduCopter (but it can be used to see output information for library example sketches).
+* Connection 1 is used for debugging ArduCopter. Follow
+1. Insert the following code in the place you want to debug:
+```
+::printf("Hello on debug console at %.3f seconds\n", (double)(AP_HAL::millis() * 0.001f));
+```
+2. Run ./build_and_upload.sh. This step is using Connection 2. Once it is done, you need to switch to Connection 1.
+3. In your terminal, run
+```
+screen /dev/ttyUSB0 57600 8N1
+```
+4. Now you should see `Hello on debug console at XXX seconds` on the screen.
 
 ## Troubleshooting
 
