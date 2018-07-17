@@ -162,7 +162,7 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
 void AP_Motors6DOF::add_motor_raw_6dof(int8_t motor_num, float roll_fac, float pitch_fac, float yaw_fac, float throttle_fac, float forward_fac, float lat_fac, uint8_t testing_order)
 {
     //Parent takes care of enabling output and setting up masks
-    add_motor_raw(motor_num, roll_fac, pitch_fac, yaw_fac, testing_order);
+    add_motor_raw(motor_num, roll_fac, pitch_fac, yaw_fac, 1.0f, testing_order);
 
     //These are additional parameters for an ROV
     _throttle_factor[motor_num] = throttle_fac;
