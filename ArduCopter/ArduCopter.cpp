@@ -310,6 +310,11 @@ void Copter::rc_loop()
     // -----------------------------------------
     read_radio();
     read_control_switch();
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jul 22, 2018
+    // trigger the switch of 'frame_class' in pentacopter to simulate the loss of one rotor.
+    read_frame_class_switch();
 }
 
 // throttle_loop - should be run at 50 hz

@@ -117,7 +117,13 @@ void AP_MotorsMatrix::set_update_rate( uint16_t speed_hz )
 void AP_MotorsMatrix::set_frame_class_and_type(motor_frame_class frame_class, motor_frame_type frame_type)
 {
     // exit immediately if armed or no change
-    if (armed() || (frame_class == _last_frame_class && _last_frame_type == frame_type)) {
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jul 22, 2018
+    // allow for the change of frame_class if it is our pentacopter demo.
+    if (frame_class != MOTOR_FRAME_PENTA &&
+        frame_class != MOTOR_FRAME_PENTA_QUAD &&
+        (armed() || (frame_class == _last_frame_class && _last_frame_type == frame_type))) {
         return;
     }
     _last_frame_class = frame_class;
@@ -310,6 +316,8 @@ void AP_MotorsMatrix::output_to_motors()
     for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]) {
             rc_write(i, motor_out[i]);
+        } else {
+            rc_write(i, get_pwm_output_min());
         }
     }
 }
@@ -694,6 +702,18 @@ void AP_MotorsMatrix::setup_motors(motor_frame_class frame_class, motor_frame_ty
             add_motor(AP_MOTORS_MOT_3,          0,  AP_MOTORS_MATRIX_YAW_FACTOR_CW,  0.90450844f,  3);
             add_motor(AP_MOTORS_MOT_4,          -144,   AP_MOTORS_MATRIX_YAW_FACTOR_CW,  0.69098298f,  4);
             add_motor(AP_MOTORS_MOT_5,          -72,    AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 1.25000007f,  5);
+            success = true;
+            break;
+        }
+        // Tao Du
+        // taodu@csail.mit.edu
+        // Jul 22, 2018
+        case MOTOR_FRAME_PENTA_QUAD: {
+            // This describes the same pentacopter as above but with motor 3 disabled.
+            add_motor(AP_MOTORS_MOT_1,          72,     AP_MOTORS_MATRIX_YAW_FACTOR_CW,  0.36180341f,  1);
+            add_motor(AP_MOTORS_MOT_2,          144,    AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 0.13819659f,  2);
+            add_motor(AP_MOTORS_MOT_4,          -144,   AP_MOTORS_MATRIX_YAW_FACTOR_CW,  0.13819659f,  3);
+            add_motor(AP_MOTORS_MOT_5,          -72,    AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 0.36180341f,  4);
             success = true;
             break;
         }

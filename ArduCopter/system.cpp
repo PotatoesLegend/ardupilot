@@ -311,6 +311,11 @@ void Copter::init_ardupilot()
     // initialise the flight mode and aux switch
     // ---------------------------
     reset_control_switch();
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jul 22, 2018
+    reset_frame_class_switch();
+
     init_aux_switches();
 
     startup_INS_ground();
@@ -558,6 +563,7 @@ uint8_t Copter::get_frame_mav_type()
         // taodu@csail.mit.edu
         // Jul 5, 2018
         case AP_Motors::MOTOR_FRAME_PENTA:
+        case AP_Motors::MOTOR_FRAME_PENTA_QUAD:
             return MAV_TYPE_GENERIC;
     }
     // unknown frame so return generic

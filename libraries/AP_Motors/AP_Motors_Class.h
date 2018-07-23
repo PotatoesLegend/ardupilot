@@ -42,6 +42,7 @@ public:
         // taodu@csail.mit.edu
         // Jul 4, 2018
         MOTOR_FRAME_PENTA = 12,
+        MOTOR_FRAME_PENTA_QUAD = 13,
     };
     enum motor_frame_type {
         MOTOR_FRAME_TYPE_PLUS = 0,

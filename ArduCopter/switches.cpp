@@ -70,6 +70,35 @@ void Copter::read_control_switch()
     control_switch_state.last_switch_position = switch_position;
 }
 
+// Tao Du
+// taodu@csail.mit.edu
+// Jul 22, 2018
+void Copter::read_frame_class_switch()
+{
+    // calculate position of flight mode switch
+    int8_t switch_position;
+    uint16_t rc6_in = RC_Channels::rc_channel(CH_6)->get_radio_in();
+    if      (rc6_in < 1231) switch_position = 0;
+    else if (rc6_in < 1750) switch_position = 1;
+    else switch_position = 2;
+
+    // We assume 0 -> penta, 1 -> penta with loss of motor (quad), 2 -> ignore.
+    bool frame_class_switch_changed = switch_position != frame_class_switch_state;
+    AP_Motors::motor_frame_class current_class = (AP_Motors::motor_frame_class)g2.frame_class.get();
+    if ((current_class != AP_Motors::MOTOR_FRAME_PENTA && current_class != AP_Motors::MOTOR_FRAME_PENTA_QUAD) || !frame_class_switch_changed || switch_position == 2) return;
+
+    // Update the frame class.
+    if (switch_position == 0) {
+        // Reset everything to penta.
+        g2.frame_class.set(AP_Motors::MOTOR_FRAME_PENTA);
+    } else {
+        // Reset everything to penta_quad.
+        g2.frame_class.set(AP_Motors::MOTOR_FRAME_PENTA_QUAD);
+    }
+    motors->set_frame_class_and_type((AP_Motors::motor_frame_class)g2.frame_class.get(), (AP_Motors::motor_frame_type)g.frame_type.get());
+    frame_class_switch_state = switch_position;
+}
+
 // check_if_auxsw_mode_used - Check to see if any of the Aux Switches are set to a given mode.
 bool Copter::check_if_auxsw_mode_used(uint8_t auxsw_mode_check)
 {
@@ -105,6 +134,15 @@ void Copter::reset_control_switch()
 {
     control_switch_state.last_switch_position = control_switch_state.debounced_switch_position = -1;
     read_control_switch();
+}
+
+// Tao Du
+// taodu@csail.mit.edu
+// Jul 22, 2018
+void Copter::reset_frame_class_switch()
+{
+    frame_class_switch_state = -1;
+    read_frame_class_switch();
 }
 
 // read_3pos_switch

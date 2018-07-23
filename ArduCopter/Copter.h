@@ -294,6 +294,12 @@ private:
         uint32_t last_edge_time_ms;         // system time that switch position was last changed
     } control_switch_state;
 
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jul 22, 2018
+    // frame type switch.
+    int8_t frame_class_switch_state;
+
     struct {
         bool running;
         float max_speed;
@@ -1086,6 +1092,12 @@ private:
     bool check_if_auxsw_mode_used(uint8_t auxsw_mode_check);
     bool check_duplicate_auxsw(void);
     void reset_control_switch();
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jul 22, 2018
+    void read_frame_class_switch();
+    void reset_frame_class_switch();
+
     uint8_t read_3pos_switch(uint8_t chan);
     void read_aux_switches();
     void init_aux_switches();
