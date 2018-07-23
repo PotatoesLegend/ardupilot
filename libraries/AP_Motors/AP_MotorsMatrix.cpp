@@ -317,6 +317,10 @@ void AP_MotorsMatrix::output_to_motors()
         if (motor_enabled[i]) {
             rc_write(i, motor_out[i]);
         } else {
+            // Tao Du
+            // taodu@csail.mit.edu
+            // Jul 23, 2018
+            // this else statement is added to fake the loss of a rotor in the pentacopter demo.
             rc_write(i, get_pwm_output_min());
         }
     }
@@ -710,10 +714,10 @@ void AP_MotorsMatrix::setup_motors(motor_frame_class frame_class, motor_frame_ty
         // Jul 22, 2018
         case MOTOR_FRAME_PENTA_QUAD: {
             // This describes the same pentacopter as above but with motor 3 disabled.
-            add_motor(AP_MOTORS_MOT_1,          72,     AP_MOTORS_MATRIX_YAW_FACTOR_CW,  0.36180341f,  1);
-            add_motor(AP_MOTORS_MOT_2,          144,    AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 0.13819659f,  2);
-            add_motor(AP_MOTORS_MOT_4,          -144,   AP_MOTORS_MATRIX_YAW_FACTOR_CW,  0.13819659f,  3);
-            add_motor(AP_MOTORS_MOT_5,          -72,    AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 0.36180341f,  4);
+            add_motor(AP_MOTORS_MOT_1,          72,     AP_MOTORS_MATRIX_YAW_FACTOR_CW,  1.44721364f,  1);
+            add_motor(AP_MOTORS_MOT_2,          144,    AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 0.55278636f,  2);
+            add_motor(AP_MOTORS_MOT_4,          -144,   AP_MOTORS_MATRIX_YAW_FACTOR_CW,  0.55278636f,  3);
+            add_motor(AP_MOTORS_MOT_5,          -72,    AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 1.44721364f,  4);
             success = true;
             break;
         }
