@@ -95,7 +95,7 @@ void Copter::read_frame_class_switch()
         // Reset everything to penta_quad.
         g2.frame_class.set(AP_Motors::MOTOR_FRAME_PENTA_QUAD);
     }
-    motors->set_frame_class_and_type((AP_Motors::motor_frame_class)g2.frame_class.get(), (AP_Motors::motor_frame_type)g.frame_type.get());
+    motors->reset_frame_class_and_type((AP_Motors::motor_frame_class)g2.frame_class.get(), (AP_Motors::motor_frame_type)g.frame_type.get());
     frame_class_switch_state = switch_position;
 }
 

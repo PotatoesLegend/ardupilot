@@ -135,6 +135,12 @@ public:
     // set frame class (i.e. quad, hexa, heli) and type (i.e. x, plus)
     virtual void        set_frame_class_and_type(motor_frame_class frame_class, motor_frame_type frame_type) = 0;
 
+    // Tao Du
+    // taodu@csail.mit.edu
+    // Jul 23, 2018
+    // reset frame class (i.e. quad, hexa, heli) and type (i.e. x, plus)
+    virtual void        reset_frame_class_and_type(motor_frame_class frame_class, motor_frame_type frame_type) {}
+
     // enable - starts allowing signals to be sent to motors
     virtual void        enable() = 0;
 
